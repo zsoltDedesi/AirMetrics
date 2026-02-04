@@ -1,7 +1,7 @@
 import threading
 import time
 from typing import Any
-from datetime import datetime
+# from datetime import datetime
 
 import adafruit_dht
 import board
@@ -13,19 +13,19 @@ class AM2302:
         pin: Any | None = None,
         calibration_offset: float = 1.5,
         *,
-        min_seconds_between_reads: float = 2.0,
         use_pulseio: bool = False,
     ):
         self.pin = pin or board.D6
         self.calibration_offset = calibration_offset
-        self.min_seconds_between_reads = min_seconds_between_reads
 
         self._dht = adafruit_dht.DHT22(self.pin, use_pulseio=use_pulseio)
         self._lock = threading.Lock()
         # self._last_read_monotonic: float | None = None
 
+
     def close(self) -> None:
         self._dht.exit()
+
 
     def sensor_is_connected(self) -> bool:
         try:
@@ -40,7 +40,7 @@ class AM2302:
         with self._lock:
             last_error: Exception | None = None
 
-            for attempt in range(retries + 1):
+            for attempt_to_read_sensor in range(retries + 1):
 
                 try:
                     temperature = self._dht.temperature
@@ -52,21 +52,19 @@ class AM2302:
                     return {
                         "temperature": float(temperature) - float(self.calibration_offset),
                         "humidity": float(humidity),
-                        "ts": datetime.now().strftime("%H:%M:%S")
+                        "ts": int(time.time())
                         }
                 
                 except RuntimeError as exc:
                     last_error = exc
                     
-                    if attempt < retries:
+                    if attempt_to_read_sensor < retries:
                         time.sleep(retry_delay_seconds)
                         continue
                     raise
                     
             raise RuntimeError("AM2302 read failed") from last_error
 
-    def read_sensor_temp(self) -> dict:
-        return self.read_sensor()
 
 
 # dht = adafruit_dht.DHT22(board.D6, use_pulseio=False)

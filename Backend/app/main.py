@@ -1,122 +1,82 @@
-import os
+
 from contextlib import asynccontextmanager
 import asyncio
 from collections import deque
-from datetime import datetime, timedelta, timezone
+# from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.encoders import jsonable_encoder
+
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.sensors.am2302 import AM2302
-from app.sensors.ds18b20 import DS18B20, DS18B20NotFoundError
-from app.db import Database, Reading, now_ts
-from app.stream import SseHub, sse_iterator
-from app.services.sampler import Sampler, Thresholds
+from app.sensors.ds18b20 import DS18B20
+from app.db import Database, Reading
+from app.stream import SseHub, SseEvent, format_sse, sse_iterator
 
+from app.services.sampler import Sampler
+from app.services.tasks import flusher, retention
+from app.services.env_loader import settings 
 
-
-def _get_float_env(name: str, default: float) -> float:
-    value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return default
-    return float(value)
-
-
-def _parse_since(since: str) -> int:
-    since = since.strip()
-    if since.endswith("h") and since[:-1].isdigit():
-        hours = int(since[:-1])
-        return now_ts() - hours * 3600
-    if since.endswith("m") and since[:-1].isdigit():
-        minutes = int(since[:-1])
-        return now_ts() - minutes * 60
-    if since.isdigit():
-        return int(since)
-    try:
-        dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp())
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid since: {since}") from exc
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    sensor_ds18b20 = DS18B20(os.getenv("DS18B20_DEVICE_ID", "DS_SENSOR_ID"))
-    sensor_am2302 = AM2302(
-        calibration_offset=_get_float_env("AM2302_CALIBRATION_OFFSET", 1.0),
-        min_seconds_between_reads=_get_float_env("AM2302_MIN_SECONDS_BETWEEN_READS", 2.0),
-    )
-
-    hub = SseHub()
-    db = Database(os.getenv("DB_PATH", "DB_PATH"))
+    db = Database(settings.DB_PATH)
     db_conn = await db.connect()
+    hub = SseHub()
+    buffer: deque[Reading] = deque(maxlen=int(settings.BUFFER_MAX_READINGS))
 
-    buffer: deque[Reading] = deque(maxlen=int(_get_float_env("BUFFER_MAX_READINGS", 10_000)))
+    sensor_ds18b20 = DS18B20(settings.DS18B20_DEVICE_ID)
+    sensor_am2302 = AM2302(calibration_offset=settings.AM2302_CALIBRATION_OFFSET)
 
     def enqueue(reading: Reading) -> None:
-        # called from event loop thread
-        if len(buffer) == buffer.maxlen:
-            # drop oldest; acceptable loss within buffer window
-            buffer.popleft()
+        # Enqueue reading to buffer
         buffer.append(reading)
 
-    async def publish(payload: dict) -> None:
-        await hub.publish("reading", payload)
+    async def on_reading_change(reading: Reading) -> None:
+        enqueue(reading)
+        await hub.publish("reading", reading.model_dump())
 
-    sampler = Sampler(
-        ds18b20=sensor_ds18b20,
-        am2302=sensor_am2302,
-        interval_seconds=_get_float_env("SAMPLE_INTERVAL_SECONDS", 5.0),
-        thresholds=Thresholds(
-            delta_t=_get_float_env("THRESHOLD_DELTA_T", 0.02),
-            delta_rh=_get_float_env("THRESHOLD_DELTA_RH", 0.1),
-        ),
-        publish=publish,
-        enqueue=enqueue,
-    )
 
-    async def flusher() -> None:
-        flush_every = _get_float_env("FLUSH_EVERY_SECONDS", 300.0)
-        while True:
-            await asyncio.sleep(flush_every)
-            batch = list(buffer)
-            buffer.clear()
-            await db.insert_many(db_conn, batch)
+    samplers = [
+        Sampler(
+            driver=sensor_ds18b20,
+            sensor_name="ds18b20",
+            treshold_temp=settings.THRESHOLD_DELTA_T_HIGH,
+            interval_seconds=settings.DS18B20_SAMPLING_INTERVAL_SECONDS,
+            on_change= on_reading_change),
+        Sampler(driver=sensor_am2302,
+                sensor_name="am2302",
+                treshold_temp=settings.THRESHOLD_DELTA_T_LOW,
+                treshold_humidity=settings.THRESHOLD_DELTA_RH,
+                interval_seconds=settings.AM2302_SAMPLING_INTERVAL_SECONDS,
+                on_change=on_reading_change)
+        ]
 
-    async def retention() -> None:
-        while True:
-            await asyncio.sleep(3600.0)
-            cutoff = now_ts() - 24 * 3600
-            await db.delete_older_than(db_conn, cutoff_ts=cutoff)
 
-    app.state.sensor_ds18b20 = sensor_ds18b20
-    app.state.sensor_am2302 = sensor_am2302
-    app.state.hub = hub
-    app.state.db = db
+    tasks = [
+        asyncio.create_task(flusher(buffer, db, db_conn, settings.FLUSH_EVERY_SECONDS), name="flusher"),
+        asyncio.create_task(retention(db, db_conn, settings.RETENTION_INTERVAL_SECONDS, settings.RETENTION_HOURS), name="retention"),
+        *[asyncio.create_task(s.run(), name=f"sampler_{s.sensor_name}") for s in samplers]
+    ]
+
+    app.state.hub = hub    
+    app.state.sampler = {s.sensor_name: s for s in samplers}
     app.state.db_conn = db_conn
-    app.state.buffer = buffer
-    app.state.sampler = sampler
-
-    sampler_task = asyncio.create_task(sampler.run(), name="sampler")
-    flusher_task = asyncio.create_task(flusher(), name="flusher")
-    retention_task = asyncio.create_task(retention(), name="retention")
+    app.state.db = db
 
     try:
         yield
+
     finally:
-        sampler.stop()
-        sampler_task.cancel()
-        flusher_task.cancel()
-        retention_task.cancel()
-        await asyncio.gather(sampler_task, flusher_task, retention_task, return_exceptions=True)
-        batch = list(buffer)
-        buffer.clear()
-        await db.insert_many(db_conn, batch)
+        # Clean stop
+        for s in samplers: s.stop()
+        for t in tasks: t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+        if buffer:
+            await db.insert_many(db_conn, list(buffer))
         await db_conn.close()
-        sensor_am2302.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -127,60 +87,42 @@ def health():
     return {"ok": True}
 
 
-@app.get("/sensors/am2302/latest")
-def am2302_latest():
-    try:
-        sensor_am2302: AM2302 = app.state.sensor_am2302
-        temp = sensor_am2302.read_sensor_temp()
-        if temp is not None:
-            return jsonable_encoder(temp)
 
-        raise HTTPException(status_code=503, detail="Failed to read temperature from AM2302 sensor")
+@app.get("/sensors/{sensor_name}/latest")
+async def get_latest(sensor_name):
+    samplers = app.state.sampler
+    if sensor_name not in samplers:
+        raise HTTPException(status_code=404, detail=f"Sensor '{sensor_name}' not found")
     
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    latest = samplers[sensor_name].last_reading
+    if latest is None:
+        raise HTTPException(status_code=404, detail=f"No readings for sensor '{sensor_name}' yet")
     
-    # sampler: AM2302Sampler = app.state.am2302_sampler
-    # latest = sampler.latest()
-
-    # if latest.value is not None:
-    #     return latest.value
-    
-    # raise HTTPException(status_code=503, detail={"error": latest.error, "updated_at": latest.updated_at})
-
-
-@app.get("/sensors/ds18b20/latest")
-def ds18b20_latest():
-
-    try:
-        sensor_ds18b20: DS18B20 = app.state.sensor_ds18b20
-        temp = sensor_ds18b20.read_sensor_temp()
-        if temp is not None:
-            return jsonable_encoder(temp)
-
-        raise HTTPException(status_code=503, detail="Failed to read temperature from DS18B20 sensor")
-    
-    except DS18B20NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get("/api/history")
-async def api_history(since: str = Query(default="24h")):
-    db: Database = app.state.db
-    db_conn = app.state.db_conn
-    since_ts = _parse_since(since)
-    return await db.history_since(db_conn, since_ts=since_ts)
+    return latest
 
 
 @app.get("/api/stream")
 async def api_stream():
     hub: SseHub = app.state.hub
     queue = await hub.subscribe()
+
     async def event_gen():
         try:
+            # Send a snapshot on first subscribe
+            for sampler in app.state.sampler.values():
+                latest = sampler.last_reading
+                if latest is not None:
+                    yield format_sse(SseEvent(event="reading", data=latest.model_dump()))
+
             async for chunk in sse_iterator(queue):
                 yield chunk
         finally:
             await hub.unsubscribe(queue)
 
-    return StreamingResponse(event_gen(), media_type="text/event-stream")
+    headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",  # in case of nginx reverse proxy, disable response buffering
+    }
+
+    return StreamingResponse(event_gen(), media_type="text/event-stream", headers=headers)

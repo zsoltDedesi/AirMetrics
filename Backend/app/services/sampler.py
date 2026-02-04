@@ -1,88 +1,99 @@
-from __future__ import annotations
+"""Sampler service for AirMetrics backend."""
 
 import asyncio
-from dataclasses import dataclass
-from typing import Awaitable, Callable
 
-from app.db import Reading, now_ts
-from app.sensors.am2302 import AM2302
-from app.sensors.ds18b20 import DS18B20
+from typing import Awaitable, Callable, Protocol
+
+from app.db import Reading
 
 
-@dataclass(frozen=True)
-class Thresholds:
-    delta_t: float = 0.02
-    delta_rh: float = 0.1
-
-
-PublishFn = Callable[[dict], Awaitable[None]]
-EnqueueFn = Callable[[Reading], None]
+class SensorDriver(Protocol):
+    """Anything that has read_sensor method and returns a dict or None."""
+    def read_sensor(self) -> dict | None: ...
 
 
 class Sampler:
     def __init__(
         self,
         *,
-        ds18b20: DS18B20,
-        am2302: AM2302,
-        interval_seconds: float = 5.0,
-        thresholds: Thresholds = Thresholds(),
-        publish: PublishFn,
-        enqueue: EnqueueFn,
-    ) -> None:
-        
-        self._ds18b20 = ds18b20
-        self._am2302 = am2302
-        self._interval_seconds = interval_seconds
-        self._thresholds = thresholds
-        self._publish = publish
-        self._enqueue = enqueue
+        driver: SensorDriver,
+        sensor_name: str,
+        treshold_temp: float,
+        treshold_humidity: float | None = None,
+        interval_seconds: float,
+        on_change: Callable[[Reading], Awaitable[None]],
+    ):
+        self.driver = driver
+        self.sensor_name = sensor_name
+        self.treshold_temp = treshold_temp
+        self.treshold_humidity = treshold_humidity
+        self.interval_seconds = interval_seconds
+        self.on_change = on_change
 
-        self._last_ds_temp: float | None = None
-        self._last_am_temp: float | None = None
-        self._last_am_rh: float | None = None
-
+        self._last: Reading | None = None
         self._stop = asyncio.Event()
 
-    def stop(self) -> None:
-        self._stop.set()
+
+    async def _sample_once(self) -> None:
+        # Read from the sensor in a thread to avoid blocking the event loop
+        try:
+            raw_sensor_data = await asyncio.to_thread(self.driver.read_sensor)
+        except Exception as e:
+            print(f"Error reading sensor {self.sensor_name}: {e}")
+            return
+
+        if raw_sensor_data is None: return
+
+        try:
+            current = Reading(sensor=self.sensor_name, **raw_sensor_data)
+
+        except RuntimeError as e:
+            print(f"Runtime error for {self.sensor_name}: {e}")
+            return
+
+        except Exception as e:
+            print(f"Validation error for {self.sensor_name}: {e}")
+            return
+            
+        if self._should_emit(current):
+            self._last = current
+            await self.on_change(current)
+    
+
+    def _should_emit(self, current: Reading) -> bool:
+        if self._last is None:
+            return True
+        
+        # Tempterature difference check (absolute value)
+        temperature_delta = abs(current.temperature - self._last.temperature) >= self.treshold_temp
+
+        # Humidity difference check (absolute value)
+        humidity_delta = False
+        if self.treshold_humidity is not None and \
+           current.humidity is not None and \
+           self._last.humidity is not None:
+
+            if abs(current.humidity - self._last.humidity) >= self.treshold_humidity:
+                return True
+
+        return temperature_delta or humidity_delta
+
 
     async def run(self) -> None:
         while not self._stop.is_set():
             await self._sample_once()
             try:
-                await asyncio.wait_for(self._stop.wait(), timeout=self._interval_seconds)
-            except TimeoutError:
-                pass
+                await asyncio.wait_for(self._stop.wait(), timeout=self.interval_seconds)
+            
+            except asyncio.TimeoutError:
+                continue
 
-    async def _sample_once(self) -> None:
-        ts = now_ts()
 
-        ds = await asyncio.to_thread(self._ds18b20.read_sensor_temp)
-        if ds is not None:
-            ds_temp = float(ds["temperature"])
-            if self._should_emit_temp(self._last_ds_temp, ds_temp):
-                self._last_ds_temp = ds_temp
-                reading = Reading(sensor="ds18b20", temperature=ds_temp, humidity=None, ts=ts)
-                self._enqueue(reading)
-                await self._publish({"sensor": "ds18b20", "temperature": ds_temp, "humidity": None, "ts": ts})
+    def stop(self) -> None:
+        self._stop.set()
 
-        am = await asyncio.to_thread(self._am2302.read_sensor)
-        am_temp = float(am["temperature"])
-        am_rh = float(am["humidity"])
-        if self._should_emit_temp(self._last_am_temp, am_temp) or self._should_emit_rh(self._last_am_rh, am_rh):
-            self._last_am_temp = am_temp
-            self._last_am_rh = am_rh
-            reading = Reading(sensor="am2302", temperature=am_temp, humidity=am_rh, ts=ts)
-            self._enqueue(reading)
-            await self._publish({"sensor": "am2302", "temperature": am_temp, "humidity": am_rh, "ts": ts})
 
-    def _should_emit_temp(self, last: float | None, current: float) -> bool:
-        if last is None:
-            return True
-        return abs(current - last) >= self._thresholds.delta_t
+    @property
+    def last_reading(self) -> Reading | None:
+        return self._last
 
-    def _should_emit_rh(self, last: float | None, current: float) -> bool:
-        if last is None:
-            return True
-        return abs(current - last) >= self._thresholds.delta_rh

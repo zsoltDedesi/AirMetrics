@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
@@ -18,7 +19,7 @@ class SseHub:
         self._subscribers: set[asyncio.Queue[SseEvent]] = set()
 
     async def subscribe(self) -> asyncio.Queue[SseEvent]:
-        queue: asyncio.Queue[SseEvent] = asyncio.Queue(maxsize=100)
+        queue: asyncio.Queue[SseEvent] = asyncio.Queue(maxsize=100) # TODO: CONFIGURABLE MAXSIZE IF NEEDED
         async with self._lock:
             self._subscribers.add(queue)
         return queue
@@ -45,5 +46,9 @@ def format_sse(event: SseEvent) -> str:
 
 async def sse_iterator(queue: asyncio.Queue[SseEvent]) -> AsyncIterator[str]:
     while True:
-        event = await queue.get()
-        yield format_sse(event)
+        try:
+            event =  await asyncio.wait_for(queue.get(), timeout=15.0)
+            yield format_sse(event)
+
+        except asyncio.TimeoutError:
+            yield "event: ping\ndata: {}\n\n"

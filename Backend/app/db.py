@@ -1,18 +1,20 @@
-from __future__ import annotations
+"""Database module for AirMetrics backend."""
 
 import time
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 import aiosqlite
 
 
-@dataclass(frozen=True)
-class Reading:
+class Reading(BaseModel):
+    model_config = ConfigDict(frozen=True) # Make the model immutable
+    
     sensor: str
-    temperature: float | None
-    humidity: float | None
-    ts: int  # unix epoch seconds
+    temperature: float
+    humidity: Optional[float] = None
+    ts: int = Field(default_factory=lambda: int(time.time()))
 
 
 class Database:
@@ -53,7 +55,7 @@ class Database:
         await db.commit()
         return cursor.rowcount
 
-    async def history_since(self, db: aiosqlite.Connection, *, since_ts: int) -> list[dict]:
+    async def history_since(self, db: aiosqlite.Connection, *, since_ts: int) -> list[Reading]:
         cursor = await db.execute(
             """
             SELECT sensor, temperature, humidity, ts
@@ -64,10 +66,7 @@ class Database:
             (since_ts,),
         )
         rows = await cursor.fetchall()
-        return [
-            {"sensor": sensor, "temperature": temperature, "humidity": humidity, "ts": ts}
-            for (sensor, temperature, humidity, ts) in rows
-        ]
+        return [Reading(sensor=s, temperature=t, humidity=h, ts=ts) for (s, t, h, ts) in rows]
 
 
 def now_ts() -> int:
