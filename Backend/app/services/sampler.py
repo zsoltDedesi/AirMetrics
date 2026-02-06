@@ -4,6 +4,8 @@ import asyncio
 
 from typing import Awaitable, Callable, Protocol
 
+from pydantic_core import ValidationError
+
 from app.db import Reading
 
 
@@ -47,17 +49,21 @@ class Sampler:
         try:
             current = Reading(sensor=self.sensor_name, **raw_sensor_data)
 
-        except RuntimeError as e:
-            print(f"Runtime error for {self.sensor_name}: {e}")
+        except ValidationError as e:
+            print(f"Validation error for {self.sensor_name}: {e}")
             return
 
         except Exception as e:
-            print(f"Validation error for {self.sensor_name}: {e}")
+            print(f"Unexpected error processing reading for {self.sensor_name}: {e}")
             return
             
         if self._should_emit(current):
             self._last = current
-            await self.on_change(current)
+            try:
+                await self.on_change(current)
+            
+            except Exception as e:
+                print(f"Error in on_change for {self.sensor_name}: {e}")
     
 
     def _should_emit(self, current: Reading) -> bool:
