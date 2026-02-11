@@ -19,7 +19,7 @@ async def history(
         since_ts = parse_since(since)
 
     except ValueError as e:
-        return HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
     readings = await db.history_since(conn, since_ts=since_ts)
     return {"readings": [reading.model_dump() for reading in readings]}
