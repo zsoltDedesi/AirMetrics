@@ -1,4 +1,4 @@
-# DS18B20 Temperature Sensor Reader
+"""DS18B20 1-Wire sensor driver for discovery and temperature reads from sysfs."""
 
 import os, glob
 from pathlib import Path
@@ -57,4 +57,3 @@ class DS18B20:
         return {"temperature": float(f"{temp_c:.2f}"),
                 "ts": int(time.time())
                 }
-

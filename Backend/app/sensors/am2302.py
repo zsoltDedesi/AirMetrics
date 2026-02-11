@@ -1,3 +1,6 @@
+"""AM2302 (DHT22) sensor driver with retries, locking, and calibration offset handling."""
+
+
 import threading
 import time
 from typing import Any

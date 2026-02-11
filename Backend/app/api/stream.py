@@ -1,9 +1,12 @@
+"""Streaming endpoint that serves live sensor readings over Server-Sent Events."""
+
+
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from app.stream import SseEvent, SseHub, format_sse, sse_iterator
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 
 @router.get("/stream")

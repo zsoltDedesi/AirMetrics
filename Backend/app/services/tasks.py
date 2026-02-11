@@ -1,3 +1,4 @@
+"""Background tasks for periodic buffer flushing and retention cleanup in the database."""
 
 from collections import deque
 import aiosqlite
@@ -5,10 +6,6 @@ import asyncio
 import time
 
 from app.db import Database, Reading
-
-
-
-
 
 
 async def flusher(

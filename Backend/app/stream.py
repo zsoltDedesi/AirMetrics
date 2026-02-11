@@ -1,3 +1,5 @@
+"""Utilities for publishing and formatting Server-Sent Events for live sensor updates."""
+
 from __future__ import annotations
 
 import asyncio

@@ -1,4 +1,4 @@
-"""Database module for AirMetrics backend."""
+"""Database models and async SQLite access layer for storing and querying readings."""
 
 import time
 from pathlib import Path
@@ -20,6 +20,7 @@ class Reading(BaseModel):
 class Database:
     def __init__(self, path: str | Path):
         self._path = str(path)
+        Path(self._path).parent.mkdir(parents=True, exist_ok=True)
 
     async def connect(self) -> aiosqlite.Connection:
         db = await aiosqlite.connect(self._path)

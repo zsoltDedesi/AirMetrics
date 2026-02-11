@@ -1,34 +1,38 @@
-"""
-Support utility functions
+"""Utility helpers shared across modules, including parsing relative history time filters."""
 
-"""
-import os
-from datetime import datetime, timezone
+
+import re
+import time
+from typing import Final
 from fastapi import HTTPException
 
 
-def _get_float_env(name: str, default: float) -> float:
-    value = os.getenv(name)
-    if value is None or value.strip() == "":
-        return default
-    return float(value)
+# Precompile the regex for performance. The (?:now-)? part makes the "now-" prefix optional, 
+# allowing one regex to handle both cases. Using named groups (?P<name>...) for readability.
+SINCE_PATTERN: Final = re.compile(r"^(?:now-)?(?P<amount>\d+)(?P<unit>[hm])$")
 
+# Define a mapping for time units to their corresponding multipliers in seconds.
+TIME_MULTIPLIERS: Final[dict[str, int]] = {
+    "h": 3600,
+    "m": 60,
+}
 
-def _parse_since(since: str) -> int:
-    since = since.strip()
-    if since.endswith("h") and since[:-1].isdigit():
-        hours = int(since[:-1])
-        return now_ts() - hours * 3600
-    if since.endswith("m") and since[:-1].isdigit():
-        minutes = int(since[:-1])
-        return now_ts() - minutes * 60
-    if since.isdigit():
-        return int(since)
+def parse_since(value: str) -> int:
+    """
+    Parses a time string (unix timestamp, '24h', '30m', 'now-24h') into a unix timestamp.
+    """
+    raw = value.strip().lower()
+    match = SINCE_PATTERN.match(raw)
+
+    if raw.isdigit(): return int(raw)
+        
+    if match:
+        amount = int(match.group("amount"))
+        unit = match.group("unit")
+        
+        # Calculate the time delta in seconds based on the unit and amount.
+        delta = amount * TIME_MULTIPLIERS[unit]      
+        return int(time.time()) - delta
+
     
-    try:
-        dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp())
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid since: {since}") from exc
+    raise ValueError("Invalid since format. Use unix timestamp, '24h', '30m', or 'now-24h'.")

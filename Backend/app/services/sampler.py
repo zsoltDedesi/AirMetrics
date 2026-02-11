@@ -1,4 +1,4 @@
-"""Sampler service for AirMetrics backend."""
+"""Asynchronous sampling service that emits readings when change thresholds are exceeded."""
 
 import asyncio
 
@@ -102,4 +102,3 @@ class Sampler:
     @property
     def last_reading(self) -> Reading | None:
         return self._last
-

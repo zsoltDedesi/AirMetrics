@@ -1,3 +1,6 @@
+"""Sensor endpoints for retrieving the latest in-memory reading per configured sensor."""
+
+
 from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter()

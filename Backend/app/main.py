@@ -1,3 +1,4 @@
+"""Application entrypoint that wires sensors, services, database, and API routes."""
 
 from contextlib import asynccontextmanager
 import asyncio
@@ -5,17 +6,18 @@ from collections import deque
 # from datetime import datetime, timedelta, timezone
 
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI
+
 
 from app.sensors.am2302 import AM2302
 from app.sensors.ds18b20 import DS18B20
 from app.db import Database, Reading
-from app.stream import SseHub, SseEvent, format_sse, sse_iterator
+from app.stream import SseHub
 
 from app.services.sampler import Sampler
 from app.services.tasks import flusher, retention
 from app.services.env_loader import settings 
+from app.api.router import api_router
 
 
 
@@ -80,49 +82,4 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-
-
-@app.get("/sensors/{sensor_name}/latest")
-async def get_latest(sensor_name):
-    samplers = app.state.sampler
-    if sensor_name not in samplers:
-        raise HTTPException(status_code=404, detail=f"Sensor '{sensor_name}' not found")
-    
-    latest = samplers[sensor_name].last_reading
-    if latest is None:
-        raise HTTPException(status_code=404, detail=f"No readings for sensor '{sensor_name}' yet")
-    
-    return latest
-
-
-@app.get("/api/stream")
-async def api_stream():
-    hub: SseHub = app.state.hub
-    queue = await hub.subscribe()
-
-    async def event_gen():
-        try:
-            # Send a snapshot on first subscribe
-            for sampler in app.state.sampler.values():
-                latest = sampler.last_reading
-                if latest is not None:
-                    yield format_sse(SseEvent(event="reading", data=latest.model_dump()))
-
-            async for chunk in sse_iterator(queue):
-                yield chunk
-        finally:
-            await hub.unsubscribe(queue)
-
-    headers = {
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "X-Accel-Buffering": "no",  # in case of nginx reverse proxy, disable response buffering
-    }
-
-    return StreamingResponse(event_gen(), media_type="text/event-stream", headers=headers)
+app.include_router(api_router)
