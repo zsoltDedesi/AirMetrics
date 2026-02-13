@@ -79,6 +79,8 @@ async def lifespan(app: FastAPI):
         if buffer:
             await db.insert_many(db_conn, list(buffer))
         await db_conn.close()
+        sensor_am2302.close()
+
 
 
 app = FastAPI(lifespan=lifespan)
