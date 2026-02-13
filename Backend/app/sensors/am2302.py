@@ -24,19 +24,17 @@ class AM2302:
         self._dht = adafruit_dht.DHT22(self.pin, use_pulseio=use_pulseio)
         self._lock = threading.Lock()
         # self._last_read_monotonic: float | None = None
+ 
+        self.temperature: float | None = None
+        self.humidity: float | None = None
+        self.measure_timestamp: int | None = None
+
+        self.hard_failed: bool = False
+
 
 
     def close(self) -> None:
         self._dht.exit()
-
-
-    def sensor_is_connected(self) -> bool:
-        try:
-            _ = self._dht.temperature
-            _ = self._dht.humidity
-            return True
-        except RuntimeError:
-            return False
 
 
     def read_sensor(self, *, retries: int = 2, retry_delay_seconds: float = 0.5) -> dict:
@@ -52,38 +50,41 @@ class AM2302:
                     if temperature is None or humidity is None:
                         raise RuntimeError("AM2302 read returned None")
 
+                    self.temperature = float(temperature)
+                    self.humidity = float(humidity)
+                    self.measure_timestamp = int(time.time())
+                    self.hard_failed = False
+
                     return {
-                        "temperature": float(temperature) - float(self.calibration_offset),
-                        "humidity": float(humidity),
-                        "ts": int(time.time())
-                        }
-                
+                        "temperature": self.temperature - float(self.calibration_offset),
+                        "humidity": self.humidity,
+                        "ts": self.measure_timestamp,
+                    }
+
                 except RuntimeError as exc:
                     last_error = exc
-                    
+
                     if attempt_to_read_sensor < retries:
                         time.sleep(retry_delay_seconds)
                         continue
+
+                    # DHT RuntimeError not necessarily means a hardware failure, but after retries we consider it a hard failure.
                     raise
-                    
+
+                except Exception as exc:
+                    # Not RuntimeError means something else went wrong, likely a hardware/driver issue, we mark it as hard failure immediately without retries.
+                    self.hard_failed = True
+                    raise
+
             raise RuntimeError("AM2302 read failed") from last_error
 
 
+    def is_read_healthy(self) -> bool:
+        if self.measure_timestamp is None:
+            return False
 
-# dht = adafruit_dht.DHT22(board.D6, use_pulseio=False)
+        return (time.time() - self.measure_timestamp) <= 60
 
-# if __name__ == "__main__":
 
-#     while True:
-#         try:
-#             t = dht.temperature - 1.5
-#             h = dht.humidity
-#             print(f"{time.strftime("%H:%M:%S", time.localtime())} Hőmérséklet: {t:.1f} °C, Páratartalom: {h:.1f}%")
-        
-#         except RuntimeError as e:
-#             
-#             
-#             time.sleep(1)        
-#             continue
-
-#         time.sleep(5)
+    def sensor_is_connected(self) -> bool:
+        return self._dht is not None and not self.hard_failed

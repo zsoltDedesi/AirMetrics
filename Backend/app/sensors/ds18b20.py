@@ -1,6 +1,5 @@
 """DS18B20 1-Wire sensor driver for discovery and temperature reads from sysfs."""
 
-import os, glob
 from pathlib import Path
 import time
 # from datetime import datetime
@@ -16,6 +15,8 @@ class DS18B20:
     def __init__(self, device_id: str | None = None):
         self.device_folder = self._sensor_is_connected(device_id)
         self.device_file = self.device_folder / "w1_slave"
+        self.temperature: float | None = None
+
 
     def _sensor_is_connected(self, device_id: str | None = None) -> Path:
         """
@@ -43,17 +44,26 @@ class DS18B20:
         Read temperature from the DS18B20 sensor.
         :return: Temperature in Celsius, or None if read failed.
         """
-        
+        self.temperature = None
         with open(self.device_file, 'r') as f:
             lines = f.readlines()
-                
-        if not lines[0].strip().endswith('YES'):
-            return None
-    
-        temp_line = lines[1].split('t=')[1]
-        temp_c = float(temp_line) / 1000.0
 
+        if len(lines) < 2: return None
+        if not lines[0].strip().endswith('YES'): return None
 
-        return {"temperature": float(f"{temp_c:.2f}"),
+        _, separator, temp = lines[1].strip().partition('t=')
+        if separator != "t=":  return None
+
+        self.temperature = float(temp) / 1000.0
+        
+        return {"temperature": float(f"{self.temperature:.2f}"),
                 "ts": int(time.time())
                 }
+
+
+    def sensor_is_connected(self) -> bool:
+        return self.device_file.exists()
+
+
+    def is_read_healthy(self) -> bool:
+        return self.temperature is not None
