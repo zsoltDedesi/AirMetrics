@@ -1,8 +1,9 @@
 """Database models and async SQLite access layer for storing and querying readings."""
 
+from contextlib import asynccontextmanager
 import time
 from pathlib import Path
-from typing import Optional
+from typing import AsyncIterator, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 import aiosqlite
@@ -22,8 +23,40 @@ class Database:
         self._path = str(path)
         Path(self._path).parent.mkdir(parents=True, exist_ok=True)
 
+    @asynccontextmanager
+    async def connection(self) -> AsyncIterator[aiosqlite.Connection]:
+        """Open a short-lived SQLite connection and always close it.
+
+        This avoids keeping a single connection open for the entire app lifetime.
+        """
+        db = await aiosqlite.connect(self._path)
+        try:
+            await db.execute("PRAGMA busy_timeout=5000;")
+            await db.execute("PRAGMA journal_mode=WAL;")
+            await db.execute("PRAGMA synchronous=NORMAL;")
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS readings (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  sensor TEXT NOT NULL,
+                  temperature REAL,
+                  humidity REAL,
+                  ts INTEGER NOT NULL
+                );
+                """
+            )
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_readings_ts ON readings(ts);")
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_readings_sensor_ts ON readings(sensor, ts);"
+            )
+            await db.commit()
+            yield db
+        finally:
+            await db.close()
+
     async def connect(self) -> aiosqlite.Connection:
         db = await aiosqlite.connect(self._path)
+        await db.execute("PRAGMA busy_timeout=5000;")
         await db.execute("PRAGMA journal_mode=WAL;")
         await db.execute("PRAGMA synchronous=NORMAL;")
         await db.execute(

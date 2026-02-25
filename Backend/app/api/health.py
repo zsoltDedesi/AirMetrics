@@ -15,8 +15,9 @@ def health() -> dict[str, bool]:
 @router.get("/health/ready")
 async def ready(request: Request) -> dict[str, bool]:
     sampler = request.app.state.sampler
+    db = request.app.state.db
 
-    return {"db": await check_db(request.app.state.db_conn),
+    return {"db": await check_db(db),
             "ds18b20": check_sensors(sampler["ds18b20"].driver) if "ds18b20" in sampler else False,
             "am2302": check_sensors(sampler["am2302"].driver) if "am2302" in sampler else False
             }

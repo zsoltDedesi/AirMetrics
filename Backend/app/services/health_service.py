@@ -1,6 +1,6 @@
 
 from typing import Protocol, runtime_checkable
-from aiosqlite import Connection 
+from app.db import Database
 
 
 @runtime_checkable
@@ -14,11 +14,11 @@ def check_sensors(sensor: SensorReader) -> bool:
     return sensor.sensor_is_connected() and sensor.is_read_healthy()
 
 
-async def check_db(db_conn: Connection) -> bool:
+async def check_db(db: Database) -> bool:
     try:
-        await db_conn.execute("SELECT 1;")
+        async with db.connection() as conn:
+            await conn.execute("SELECT 1;")
         return True
     except Exception:
         return False
-
 

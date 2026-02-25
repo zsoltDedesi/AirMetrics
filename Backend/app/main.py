@@ -24,7 +24,6 @@ from app.api.router import api_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db = Database(settings.DB_PATH)
-    db_conn = await db.connect()
     hub = SseHub()
     buffer: deque[Reading] = deque(maxlen=int(settings.BUFFER_MAX_READINGS))
 
@@ -57,14 +56,13 @@ async def lifespan(app: FastAPI):
 
 
     tasks = [
-        asyncio.create_task(flusher(buffer, db, db_conn, settings.FLUSH_EVERY_SECONDS), name="flusher"),
-        asyncio.create_task(retention(db, db_conn, settings.RETENTION_INTERVAL_SECONDS, settings.RETENTION_HOURS), name="retention"),
+        asyncio.create_task(flusher(buffer, db, settings.FLUSH_EVERY_SECONDS), name="flusher"),
+        asyncio.create_task(retention(db, settings.RETENTION_INTERVAL_SECONDS, settings.RETENTION_HOURS), name="retention"),
         *[asyncio.create_task(s.run(), name=f"sampler_{s.sensor_name}") for s in samplers]
     ]
 
     app.state.hub = hub    
     app.state.sampler = {s.sensor_name: s for s in samplers}
-    app.state.db_conn = db_conn
     app.state.db = db
 
     try:
@@ -77,8 +75,8 @@ async def lifespan(app: FastAPI):
         await asyncio.gather(*tasks, return_exceptions=True)
 
         if buffer:
-            await db.insert_many(db_conn, list(buffer))
-        await db_conn.close()
+            async with db.connection() as conn:
+                await db.insert_many(conn, list(buffer))
         sensor_am2302.close()
 
 

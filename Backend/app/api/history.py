@@ -13,7 +13,6 @@ async def history(
     ) -> dict:
 
     db = request.app.state.db
-    conn = request.app.state.db_conn
 
     try:
         since_ts = parse_since(since)
@@ -21,5 +20,6 @@ async def history(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    readings = await db.history_since(conn, since_ts=since_ts)
+    async with db.connection() as conn:
+        readings = await db.history_since(conn, since_ts=since_ts)
     return {"readings": [reading.model_dump() for reading in readings]}
