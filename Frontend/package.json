@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "axios": "^1.13.6",
-    "chart.js": "^4.5.1",
+    "chart.js": "^3.9.1",
     "pinia": "^3.0.4",
     "vue": "^3.5.25",
-    "vue-chart-3": "^4.0.1"
+    "vue-chart-3": "^3.1.0"
   },
   "devDependencies": {
     "@vicons/fluent": "^0.13.0",
