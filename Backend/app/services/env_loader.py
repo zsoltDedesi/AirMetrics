@@ -4,40 +4,78 @@ import os
 import sys
 from pathlib import Path
 
-from pydantic import ValidationError, field_validator
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # TODO: CLARIFY AND DOCUMENT EACH SETTING BELOW
     """
     Application settings loaded from environment variables or .env file, with validation.
     Critical settings are validated at startup, and any issues will cause the application to exit with an error message.
     """
     
     # --- Sensor settings ---
-    DS18B20_DEVICE_ID: str
-    DS18B20_SAMPLING_INTERVAL_SECONDS: float = 2.0
+    DS18B20_DEVICE_ID: str = Field(
+        ...,
+        description="Linux 1-wire device identifier for the DS18B20 temperature sensor (for example: 28-xxxxxxxxxxxx).",
+    )
+    DS18B20_SAMPLING_INTERVAL_SECONDS: float = Field(
+        2.0,
+        description="Polling interval in seconds for DS18B20 reads.",
+    )
     
-    AM2302_CALIBRATION_OFFSET: float = 1.0
-    AM2302_SAMPLING_INTERVAL_SECONDS: float = 2.0
+    AM2302_CALIBRATION_OFFSET: float = Field(
+        1.0,
+        description="Calibration offset applied to AM2302 temperature measurements.",
+    )
+    AM2302_SAMPLING_INTERVAL_SECONDS: float = Field(
+        2.0,
+        description="Polling interval in seconds for AM2302 temperature/humidity reads.",
+    )
 
     # --- Database ---
-    DB_PATH: str
+    DB_PATH: str = Field(
+        ...,
+        description="Absolute filesystem path to the SQLite database file used for persisted sensor readings.",
+    )
 
     # --- Sampling logic ---
-    THRESHOLD_DELTA_T_HIGH: float = 0.02
-    THRESHOLD_DELTA_T_LOW: float = 0.1
-    THRESHOLD_DELTA_RH: float = 0.1
+    THRESHOLD_DELTA_T_HIGH: float = Field(
+        0.125,
+        description="Minimum temperature change threshold (high-precision path) that triggers storing a new sample.",
+    )
+    THRESHOLD_DELTA_T_LOW: float = Field(
+        0.3,
+        description="Minimum temperature change threshold (low-precision path) that triggers storing a new sample.",
+    )
+    THRESHOLD_DELTA_RH: float = Field(
+        1.0,
+        description="Minimum relative-humidity delta that triggers storing a new sample.",
+    )
 
     # --- Buffering and flushing ---
-    BUFFER_MAX_READINGS: int = 10_000
-    FLUSH_EVERY_SECONDS: float = 300.0
-    FLUSH_EVERY_READINGS: int = 1_000
-    RETENTION_INTERVAL_SECONDS: float = 3600.0
+    BUFFER_MAX_READINGS: int = Field(
+        10_000,
+        description="In-memory buffer limit before back-pressure or forced flush behavior applies.",
+    )
+    FLUSH_EVERY_SECONDS: float = Field(
+        300.0,
+        description="Time-based flush interval in seconds for writing buffered readings to the database.",
+    )
+    FLUSH_EVERY_READINGS: int = Field(
+        1_000,
+        description="Count-based flush trigger: write buffer to database after this many new readings.",
+    )
+    RETENTION_INTERVAL_SECONDS: float = Field(
+        3600.0,
+        description="Interval in seconds for running the retention cleanup job.",
+    )
 
     # --- Data retention ---
-    RETENTION_HOURS: int = 24
+    RETENTION_HOURS: int = Field(
+        24,
+        description="Maximum age of stored readings in hours before they are deleted by retention cleanup.",
+    )
 
     # --- Pydantic configuration ---
     model_config = SettingsConfigDict(       

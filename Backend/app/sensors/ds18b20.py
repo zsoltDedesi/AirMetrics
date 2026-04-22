@@ -56,7 +56,7 @@ class DS18B20:
 
         self.temperature = float(temp) / 1000.0
         
-        return {"temperature": float(f"{self.temperature:.2f}"),
+        return {"temperature": self.temperature,
                 "ts": int(time.time())
                 }
 

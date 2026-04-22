@@ -7,6 +7,7 @@ from collections import deque
 
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from app.sensors.am2302 import AM2302
@@ -85,3 +86,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], #TODO: Restrict in production
+    allow_credentials=False, #TODO: True if auth is implemented, in production
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
