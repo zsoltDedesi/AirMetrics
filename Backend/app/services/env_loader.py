@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     DS18B20_DEVICE_ID: str = Field(
         ...,
         description="Linux 1-wire device identifier for the DS18B20 temperature sensor (for example: 28-xxxxxxxxxxxx).",
+        min_length=1,
     )
     DS18B20_SAMPLING_INTERVAL_SECONDS: float = Field(
         2.0,
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
     DB_PATH: str = Field(
         ...,
         description="Absolute filesystem path to the SQLite database file used for persisted sensor readings.",
+        min_length=1,
     )
 
     # --- Sampling logic ---
@@ -82,8 +84,9 @@ class Settings(BaseSettings):
         env_file=os.path.join(os.path.dirname(__file__), '../../airmetrics.env'),
         env_file_encoding='utf-8',
         env_file_required=True,
-        env_ignore_empty=True,
-        extra='ignore'
+        env_ignore_empty =True,
+        str_strip_whitespace=True,
+        extra='ignore',
     )
 
     @field_validator('DB_PATH')
