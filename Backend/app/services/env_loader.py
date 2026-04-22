@@ -82,6 +82,7 @@ class Settings(BaseSettings):
         env_file=os.path.join(os.path.dirname(__file__), '../../airmetrics.env'),
         env_file_encoding='utf-8',
         env_file_required=True,
+        env_ignore_empty=True,
         extra='ignore'
     )
 
