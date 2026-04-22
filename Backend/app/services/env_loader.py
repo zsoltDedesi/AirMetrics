@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     DB_PATH: str
 
     # --- Sampling logic ---
-    THRESHOLD_DELTA_T_HIGH: float = 0.02
-    THRESHOLD_DELTA_T_LOW: float = 0.1
-    THRESHOLD_DELTA_RH: float = 0.1
+    THRESHOLD_DELTA_T_HIGH: float = 0.125
+    THRESHOLD_DELTA_T_LOW: float = 0.3
+    THRESHOLD_DELTA_RH: float = 1.0
 
     # --- Buffering and flushing ---
     BUFFER_MAX_READINGS: int = 10_000
