@@ -1,9 +1,8 @@
 services:
   backend:
+    image: ghcr.io/zsoltdedesi/airmetrics-backend:latest
+    pull_policy: always
     privileged: true
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: airmetrics-backend
     restart: unless-stopped
     ports:
@@ -12,13 +11,11 @@ services:
       - ./airmetrics.env:/app/airmetrics.env:ro
       - /var/lib/airmetrics:/var/lib/airmetrics
       - /sys/bus/w1/devices:/sys/bus/w1/devices:ro
-      # Blinka platform detection (Raspberry Pi) needs access to device-tree.
       - /proc/device-tree:/proc/device-tree:ro
       - /sys/firmware/devicetree/base:/sys/firmware/devicetree/base:ro
     devices:
       - /dev/gpiomem:/dev/gpiomem
       - /dev/gpiochip0:/dev/gpiochip0
-      # Some Blinka/GPIO backends probe /dev/mem.
       - /dev/mem:/dev/mem
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/live', timeout=3)"]
