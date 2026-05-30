@@ -1,1 +1,2 @@
-export * from "./health";
+export * from './health'
+export * from './history'

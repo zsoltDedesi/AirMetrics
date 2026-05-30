@@ -2,18 +2,17 @@
 
 import time
 from pathlib import Path
-from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
 
 import aiosqlite
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Reading(BaseModel):
-    model_config = ConfigDict(frozen=True) # Make the model immutable
-    
+    model_config = ConfigDict(frozen=True)
+
     sensor: str
     temperature: float
-    humidity: Optional[float] = None
+    humidity: float | None = None
     ts: int = Field(default_factory=lambda: int(time.time()))
 
 
@@ -38,25 +37,42 @@ class Database:
             """
         )
         await db.execute("CREATE INDEX IF NOT EXISTS idx_readings_ts ON readings(ts);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_readings_sensor_ts ON readings(sensor, ts);")
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_readings_sensor_ts ON readings(sensor, ts);"
+        )
         await db.commit()
         return db
 
-    async def insert_many(self, db: aiosqlite.Connection, readings: list[Reading]) -> None:
+    async def insert_many(
+        self,
+        db: aiosqlite.Connection,
+        readings: list[Reading],
+    ) -> None:
         if not readings:
             return
+
         await db.executemany(
             "INSERT INTO readings(sensor, temperature, humidity, ts) VALUES(?, ?, ?, ?);",
             [(r.sensor, r.temperature, r.humidity, r.ts) for r in readings],
         )
         await db.commit()
 
-    async def delete_older_than(self, db: aiosqlite.Connection, *, cutoff_ts: int) -> int:
+    async def delete_older_than(
+        self,
+        db: aiosqlite.Connection,
+        *,
+        cutoff_ts: int,
+    ) -> int:
         cursor = await db.execute("DELETE FROM readings WHERE ts < ?;", (cutoff_ts,))
         await db.commit()
         return cursor.rowcount
 
-    async def history_since(self, db: aiosqlite.Connection, *, since_ts: int) -> list[Reading]:
+    async def history_since(
+        self,
+        db: aiosqlite.Connection,
+        *,
+        since_ts: int,
+    ) -> list[Reading]:
         cursor = await db.execute(
             """
             SELECT sensor, temperature, humidity, ts

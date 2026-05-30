@@ -48,3 +48,14 @@ curl http://localhost:8000/api/health/ready
 
 - Backend: `Backend/README.md`
 - Frontend: `Frontend/README.md`
+- Architecture: `docs/architecture.md`
+- Development setup: `docs/development.md`
+- Domain model: `docs/domain.md`
+- Decisions: `docs/decisions.md`
+- Testing: `docs/testing.md`
+- Workflows: `docs/workflows.md`
+- API contract: `docs/API_CONTRACT.md`
+- Database: `docs/DATABASE.md`
+- Deployment: `docs/DEPLOYMENT.md`
+- Design system: `docs/DESIGN.md`
+- Implementation plan: `docs/IMPLEMENTATION_PLAN.md`

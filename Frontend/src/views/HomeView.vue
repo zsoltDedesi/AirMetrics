@@ -1,112 +1,107 @@
 <template>
   <h1>{{ msg }}</h1>
 
-  <!-- <p>Status: {{ status }}</p> -->
   <n-space vertical>
     <n-card title="DS18B20 Sensor">
-      <p>Temperature: {{ Ds18b20Temperature ?? '-' }} °C</p>
+      <p>Temperature: {{ formatValue(ds18b20Reading?.temperature, '°C') }}</p>
     </n-card>
 
-    <n-card title="AM2302 Sensor"> 
-      <p>Temperature: {{ Am2302Temperature ?? '-' }} °C</p>
-      <p>Humidity: {{ Am2302Humidity ?? '-' }} %</p>
+    <n-card title="AM2302 Sensor">
+      <p>Temperature: {{ formatValue(am2302Reading?.temperature, '°C') }}</p>
+      <p>Humidity: {{ formatValue(am2302Reading?.humidity, '%') }}</p>
     </n-card>
-    
 
     <n-card title="History">
-      <h3 class="chart-heading">Szenzor History ( {{timestamp}} )</h3>
-      <line-chart-wrapper v-bind:since='timestamp' />
-      <!-- <LineChart :chart-data="testData" :options="chartOptions" /> -->
+      <h3 class="chart-heading">Sensor History ({{ historyRange }})</h3>
+      <LineChartWrapper :since="historyRange" />
     </n-card>
 
-
     <n-card title="System Health">
-      <p>Click the button below to check if the system is healthy.</p>
-      <n-space horizontal>
+      <p>Backend: {{ isAlive ? 'online' : 'offline' }}</p>
+      <p>Stream: {{ isConnected ? 'connected' : 'disconnected' }}</p>
+      <p v-if="readiness">Ready: {{ readinessSummary }}</p>
+      <p v-if="healthError" class="error-text">Health check failed.</p>
+      <p v-if="streamError" class="error-text">Live stream is reconnecting or unavailable.</p>
 
-        <!-- <n-button type="primary" @click="fetchHistory">Fetch history data</n-button> -->
-        <n-button type="success" @click="checkSystemHealth">Check system health</n-button>
+      <n-space horizontal>
+        <n-button type="success" :loading="isChecking" @click="checkSystemHealth">
+          Check system health
+        </n-button>
       </n-space>
     </n-card>
   </n-space>
 </template>
 
-
 <script setup>
-import { ref, onMounted, onBeforeUnmount} from 'vue'
-import { getBackendIsAlive, systemIsHealthy } from '@/api/health';
-import LineChartWrapper from '@/components/LineChartWrapper.vue';
+import { computed, onMounted } from 'vue'
 
+import LineChartWrapper from '@/components/LineChartWrapper.vue'
+import { useBackendHealth } from '@/composables/useBackendHealth'
+import { useSensorStream } from '@/composables/useSensorStream'
 
 defineProps({
-  msg: String,
-
+  msg: {
+    type: String,
+    required: true,
+  },
 })
 
-// const status = ref("Connecting...");
+const historyRange = '12h'
 
-const Ds18b20Temperature = ref(null);
-const Am2302Temperature = ref(null);
-const Am2302Humidity = ref(null);
-const timestamp = "12h"; // Default to last hours, can be made dynamic later
+const {
+  isAlive,
+  readiness,
+  isChecking,
+  error: healthError,
+  checkLiveness,
+  checkReadiness,
+} = useBackendHealth()
 
-let eventSource = null;
+const {
+  readings,
+  isConnected,
+  error: streamError,
+  connect,
+} = useSensorStream()
 
+const ds18b20Reading = computed(() => readings.value.ds18b20)
+const am2302Reading = computed(() => readings.value.am2302)
 
-onMounted(async() => {
-  const isAlive = await getBackendIsAlive();
-  console.log("Backend is alive:", isAlive);
-
-  eventSource = new EventSource(`${import.meta.env.VITE_API_BASE_BACKEND_URL}/stream`);
-  eventSource.addEventListener ('reading', (event) => {
-    try {
-
-      const data = JSON.parse(event.data);
-      console.log("Received SSE data:", data);
-      if (data.sensor === "ds18b20") {
-        Ds18b20Temperature.value = data.temperature;
-
-      } else if (data.sensor === "am2302") {
-         Am2302Temperature.value = data.temperature;
-        Am2302Humidity.value = data.humidity;
-      }
-    } catch (error) {
-      console.error("Invalid SSE data received:", error);
-    }
-  });
-
-  eventSource.onerror = (event) => {
-    console.error("SSE connection error:", event);
-    // status.value = "reconnecting...";
+const readinessSummary = computed(() => {
+  if (!readiness.value) {
+    return ''
   }
 
+  return Object.entries(readiness.value)
+    .map(([name, status]) => `${name}: ${status ? 'ok' : 'fail'}`)
+    .join(', ')
 })
 
-onBeforeUnmount(() => {
-  if (eventSource) {
-    eventSource.close();
-  }
-})
+function formatValue(value, unit) {
+  return value == null ? '-' : `${value} ${unit}`
+}
 
-const checkSystemHealth = async () => {
+async function checkSystemHealth() {
   try {
-    const isHealthy = await systemIsHealthy();
-    console.log("System is healthy:", isHealthy);
-    // alert(`System is healthy: ${JSON.stringify(isHealthy)}`);
+    await checkReadiness()
   } catch (error) {
-    console.error("Error checking system health:", error);
-    alert("Failed to check system health. See console for details.");
+    console.error('Error checking system health:', error)
   }
 }
 
+onMounted(async () => {
+  try {
+    await checkLiveness()
+  } catch (error) {
+    console.error('Backend liveness check failed:', error)
+  }
 
-
-
+  connect()
+})
 </script>
 
-
 <style scoped>
-.read-the-docs {
-  color: #888;
+.error-text {
+  color: #d03050;
 }
 </style>

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
+SUBSCRIBER_QUEUE_SIZE = 100
+PING_INTERVAL_SECONDS = 15.0
 
-@dataclass
+
+@dataclass(frozen=True)
 class SseEvent:
     event: str
     data: Any
@@ -21,7 +23,7 @@ class SseHub:
         self._subscribers: set[asyncio.Queue[SseEvent]] = set()
 
     async def subscribe(self) -> asyncio.Queue[SseEvent]:
-        queue: asyncio.Queue[SseEvent] = asyncio.Queue(maxsize=100) # TODO: CONFIGURABLE MAXSIZE IF NEEDED
+        queue: asyncio.Queue[SseEvent] = asyncio.Queue(maxsize=SUBSCRIBER_QUEUE_SIZE)
         async with self._lock:
             self._subscribers.add(queue)
         return queue
@@ -33,24 +35,24 @@ class SseHub:
     async def publish(self, event: str, data: Any) -> None:
         async with self._lock:
             subscribers = list(self._subscribers)
+
         payload = SseEvent(event=event, data=data)
         for queue in subscribers:
             try:
                 queue.put_nowait(payload)
             except asyncio.QueueFull:
-                # drop for slow client
                 pass
 
 
 def format_sse(event: SseEvent) -> str:
-    return f"event: {event.event}\ndata: {json.dumps(event.data, separators=(',', ':'))}\n\n"
+    payload = json.dumps(event.data, separators=(",", ":"))
+    return f"event: {event.event}\ndata: {payload}\n\n"
 
 
 async def sse_iterator(queue: asyncio.Queue[SseEvent]) -> AsyncIterator[str]:
     while True:
         try:
-            event =  await asyncio.wait_for(queue.get(), timeout=15.0)
+            event = await asyncio.wait_for(queue.get(), timeout=PING_INTERVAL_SECONDS)
             yield format_sse(event)
-
         except asyncio.TimeoutError:
             yield "event: ping\ndata: {}\n\n"

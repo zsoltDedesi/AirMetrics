@@ -1,8 +1,8 @@
-"""Health-check endpoint module used for liveness monitoring of the backend service."""
+"""Health-check endpoints for liveness and hardware-aware readiness."""
 
 from fastapi import APIRouter, Request
-from app.services.health_service import check_db, check_sensors
 
+from app.services.health_service import check_db, check_sensors
 
 router = APIRouter()
 
@@ -14,9 +14,15 @@ def health() -> dict[str, bool]:
 
 @router.get("/health/ready")
 async def ready(request: Request) -> dict[str, bool]:
-    sampler = request.app.state.sampler
+    samplers = request.app.state.sampler
 
-    return {"db": await check_db(request.app.state.db_conn),
-            "ds18b20": check_sensors(sampler["ds18b20"].driver) if "ds18b20" in sampler else False,
-            "am2302": check_sensors(sampler["am2302"].driver) if "am2302" in sampler else False
-            }
+    return {
+        "db": await check_db(request.app.state.db_conn),
+        "ds18b20": _sensor_ready(samplers, "ds18b20"),
+        "am2302": _sensor_ready(samplers, "am2302"),
+    }
+
+
+def _sensor_ready(samplers: dict, sensor_name: str) -> bool:
+    sampler = samplers.get(sensor_name)
+    return check_sensors(sampler.driver) if sampler else False

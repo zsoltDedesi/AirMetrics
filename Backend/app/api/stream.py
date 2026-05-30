@@ -1,6 +1,5 @@
 """Streaming endpoint that serves live sensor readings over Server-Sent Events."""
 
-
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
@@ -16,7 +15,6 @@ async def api_stream(request: Request):
 
     async def event_gen():
         try:
-            # Send a snapshot on first subscribe
             for sampler in request.app.state.sampler.values():
                 latest = sampler.last_reading
                 if latest is not None:
@@ -30,7 +28,7 @@ async def api_stream(request: Request):
     headers = {
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
-        "X-Accel-Buffering": "no",  # in case of nginx reverse proxy, disable response buffering
+        "X-Accel-Buffering": "no",
     }
 
     return StreamingResponse(event_gen(), media_type="text/event-stream", headers=headers)
