@@ -1,5 +1,5 @@
 <template>
-  <HomeView msg="Sensor Dashboard" />
+  <HomeView />
 </template>
 
 <script setup>

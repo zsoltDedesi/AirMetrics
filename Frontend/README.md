@@ -1,6 +1,13 @@
-# AirMetrics Frontend (Vue 3 + Vite)
+# AirMetrics Frontend
 
-Vue 3 + Vite frontend for the AirMetrics project.
+Vue 3 + Vite dashboard for the AirMetrics project.
+
+The dashboard uses:
+
+- Naive UI for Vue UI primitives.
+- Apache ECharts through `vue-echarts` for history charts.
+- Axios for backend API calls.
+- Local CSS with Material-style design tokens.
 
 ## Development
 
@@ -29,4 +36,4 @@ If you run the frontend dev server (Vite) on a different origin than the backend
 
 ## Project status
 
-The frontend is currently a scaffold (Vite + Vue starter). Replace `src/components/HelloWorld.vue` and wire it to the backend endpoints as needed.
+The frontend renders live sensor cards, system status, time-range controls, and temperature/humidity history charts from the backend API.

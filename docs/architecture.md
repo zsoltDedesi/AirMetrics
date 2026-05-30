@@ -32,7 +32,7 @@ Technology:
 - Framework: Vue 3
 - State management: Vue component state; Pinia is installed but not currently central to the visible dashboard flow.
 - UI library: Naive UI
-- Charting: Chart.js through `vue-chart-3`
+- Charting: Apache ECharts through `vue-echarts`
 - Build tool: Vite
 - API client: Axios
 

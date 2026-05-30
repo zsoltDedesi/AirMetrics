@@ -68,8 +68,8 @@ Tasks:
 - [x] Basic history chart.
 - [x] Basic health, stream, and history error states.
 - [x] History loading state.
-- [ ] AM2302 history visualization.
-- [ ] Configurable history range UI.
+- [x] AM2302 history visualization.
+- [x] Configurable history range UI.
 
 ### Phase 3 - Deployment
 
@@ -112,6 +112,9 @@ Tasks:
 | --- | --- | --- |
 | 2026-05-30 | Agent documentation structure added | Standard and project-specific docs created for future agent tasks. |
 | 2026-05-30 | Backend image workflow documented | GHCR ARM64 backend image workflow described in docs. |
+| 2026-05-30 | Figma-derived frontend dashboard added | Dashboard now has metric cards, status strip, range controls, temperature and humidity history charts. |
+| 2026-05-30 | Material-style frontend token layer added | Colors, typography, shapes, dashboard CSS, and chart colors now use Material-style tokens where practical. |
+| 2026-05-30 | History charts migrated to Apache ECharts | `vue-echarts` now renders temperature and humidity history within fixed chart surfaces. |
 
 ## Current Follow-Ups
 
@@ -119,8 +122,6 @@ Tasks:
 | --- | --- | --- |
 | Add automated backend tests | Core parsing and sampler logic can be tested without hardware. | high |
 | Add sensor mock mode | Full backend startup is difficult away from Raspberry Pi hardware. | high |
-| Add user-visible frontend error states | Current frontend mostly logs failures. | medium |
-| Add AM2302 chart data | Current chart focuses on DS18B20 data. | medium |
 | Decide auth/network exposure policy | API currently has no authentication and permissive CORS. | medium |
 
 ## Known Gaps

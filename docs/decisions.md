@@ -220,6 +220,34 @@ Related files:
 
 ---
 
+## 2026-05-30 - Use Apache ECharts for frontend history charts
+
+Status: accepted
+
+Context:
+
+The dashboard history charts need to render dense temperature and humidity time series inside constrained dashboard cards without overflowing into adjacent UI. The previous Chart.js implementation showed layout overflow with current production-like data.
+
+Decision:
+
+Use Apache ECharts through the `vue-echarts` wrapper for frontend history charts.
+
+Reasoning:
+
+ECharts provides robust time-series rendering, built-in clipping, contained grid labels, confined tooltips, and good resize behavior through the Vue wrapper. This keeps the chart implementation inside the frontend component layer without changing backend API contracts.
+
+Consequences:
+
+The frontend depends on `echarts` and `vue-echarts` instead of `chart.js` and `vue-chart-3`. The production bundle is larger, so future frontend performance work may split chart code into a separate chunk if needed.
+
+Related files:
+
+- `Frontend/src/components/LineChartWrapper.vue`
+- `Frontend/package.json`
+- `docs/DESIGN.md`
+
+---
+
 ## Known Gaps
 
 - No automated backend or frontend test suite is currently present.
