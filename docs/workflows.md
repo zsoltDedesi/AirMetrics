@@ -127,6 +127,7 @@ Build settings:
 - Dockerfile: `./Backend/Dockerfile`
 - Platform: `linux/arm64`
 - Push: enabled
+- JavaScript GitHub Actions runtime: opt in to Node.js 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`.
 
 Backend release process:
 

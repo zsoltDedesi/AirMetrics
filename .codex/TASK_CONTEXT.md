@@ -29,6 +29,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-30 | Added Material-style frontend design tokens and rewired dashboard CSS/chart colors to use tokenized colors, typography, and shapes where practical. | `Frontend/src/styles/`, `Frontend/src/components/LineChartWrapper.vue`, `docs/DESIGN.md` |
 | 2026-05-30 | Replaced Chart.js history charts with Apache ECharts via `vue-echarts` and constrained chart rendering inside dashboard cards. | `Frontend/src/components/LineChartWrapper.vue`, `Frontend/package.json`, `docs/` |
 | 2026-05-30 | Added frontend-only temperature chart outlier hiding for values outside `-40°C` to `85°C`, with a visible hidden-count badge. | `Frontend/src/components/LineChartWrapper.vue`, `docs/DESIGN.md` |
+| 2026-05-30 | Opted backend image GitHub Actions workflow into Node.js 24 JavaScript action runtime. | `.github/workflows/backend-image.yml`, `docs/workflows.md` |
 
 ## Validation Already Run
 
