@@ -129,6 +129,7 @@ Backend endpoint smoke checks:
 ```bash
 curl http://localhost:8000/api/health/live
 curl http://localhost:8000/api/health/ready
+curl http://localhost:8000/api/system/status
 curl 'http://localhost:8000/api/history?since=24h'
 curl -N http://localhost:8000/api/stream
 ```
@@ -184,6 +185,7 @@ Use this checklist when automated tests are not enough.
 - [ ] Backend starts with valid `Backend/airmetrics.env`.
 - [ ] `/api/health/live` returns a successful liveness response.
 - [ ] `/api/health/ready` reflects DB and sensor readiness.
+- [ ] `/api/system/status` returns retention and cleanup metadata.
 - [ ] `/api/history?since=24h` returns a valid JSON response.
 - [ ] `/api/stream` stays open and emits readings or ping events.
 - [ ] Dashboard renders without browser console errors.

@@ -121,6 +121,7 @@ Tasks:
 | 2026-05-30 | History charts migrated to Apache ECharts | `vue-echarts` now renders temperature and humidity history within fixed chart surfaces. |
 | 2026-05-31 | Sensor runtime modes and backend reading validation added | Backend can run in `hardware`, `degraded`, `mock`, or `disabled` mode; impossible readings are rejected before buffering. |
 | 2026-05-31 | AM2302 noise filtering added | AM2302 emissions use 5-sample median smoothing plus 2-reading confirmation. |
+| 2026-05-31 | Cleanup status exposed to dashboard | `/api/system/status` reports retention metadata and the frontend Last cleanup tile uses it. |
 
 ## Current Follow-Ups
 

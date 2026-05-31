@@ -158,7 +158,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
   ArrowDownload24Regular,
   ArrowSync24Regular,
@@ -177,11 +177,16 @@ import {
 
 import LineChartWrapper from '@/components/LineChartWrapper.vue'
 import { getHistory } from '@/api/history'
+import { getSystemStatus } from '@/api/system'
 import { useBackendHealth } from '@/composables/useBackendHealth'
 import { useSensorStream } from '@/composables/useSensorStream'
 import { getAlignedRange } from '@/utils/timeRange'
 
 const historyRange = ref('24h')
+const systemStatus = ref(null)
+const systemStatusError = ref(null)
+const nowTs = ref(Math.floor(Date.now() / 1000))
+let statusTimerId = null
 const historyRanges = [
   { label: '1h', value: '1h' },
   { label: '6h', value: '6h' },
@@ -208,6 +213,21 @@ const am2302Reading = computed(() => readings.value.am2302)
 
 const historyRangeLabel = computed(() => historyRanges.find((range) => range.value === historyRange.value)?.label ?? historyRange.value)
 const streamStatusText = computed(() => (isConnected.value ? 'Connected' : 'Disconnected'))
+const lastCleanupText = computed(() => {
+  if (systemStatusError.value) {
+    return 'Unavailable'
+  }
+
+  return formatRelativeTimestamp(systemStatus.value?.last_cleanup_ts)
+})
+const retentionText = computed(() => {
+  const retentionHours = systemStatus.value?.retention_hours
+  if (retentionHours == null) {
+    return '--'
+  }
+
+  return `${retentionHours}h`
+})
 
 const metricCards = computed(() => [
   createMetricCard({
@@ -257,7 +277,7 @@ const statusItems = computed(() => [
   },
   {
     label: 'Retention',
-    value: historyRange.value,
+    value: retentionText.value,
     icon: ArrowSync24Regular,
     tone: 'neutral',
   },
@@ -269,9 +289,9 @@ const statusItems = computed(() => [
   },
   {
     label: 'Last cleanup',
-    value: 'Not exposed',
+    value: lastCleanupText.value,
     icon: Pulse24Regular,
-    tone: 'neutral',
+    tone: systemStatusError.value ? 'warn' : 'neutral',
   },
   {
     label: 'AM2302 errors',
@@ -316,6 +336,39 @@ function formatTimeWithSeconds(ts) {
   })
 }
 
+function formatRelativeTimestamp(ts) {
+  if (!ts) {
+    return 'Pending'
+  }
+
+  const diffSeconds = Math.max(0, nowTs.value - ts)
+  if (diffSeconds < 60) {
+    return 'Just now'
+  }
+
+  const diffMinutes = Math.floor(diffSeconds / 60)
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min ago`
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) {
+    return `${diffHours} h ago`
+  }
+
+  return `${Math.floor(diffHours / 24)} d ago`
+}
+
+async function refreshSystemStatus() {
+  try {
+    systemStatus.value = await getSystemStatus()
+    systemStatusError.value = null
+  } catch (error) {
+    systemStatusError.value = error
+    console.error('System status check failed:', error)
+  }
+}
+
 function csvEscape(value) {
   if (value == null) {
     return ''
@@ -350,11 +403,21 @@ async function exportHistoryCsv() {
 
 onMounted(async () => {
   try {
-    await Promise.all([checkLiveness(), checkReadiness()])
+    await Promise.all([checkLiveness(), checkReadiness(), refreshSystemStatus()])
   } catch (error) {
     console.error('Backend health check failed:', error)
   }
 
   connect()
+  statusTimerId = window.setInterval(() => {
+    nowTs.value = Math.floor(Date.now() / 1000)
+    refreshSystemStatus()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (statusTimerId != null) {
+    window.clearInterval(statusTimerId)
+  }
 })
 </script>

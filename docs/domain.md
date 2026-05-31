@@ -189,7 +189,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | --- | --- | --- |
 | `ReadingEmitted` | Sampler receives first valid reading or a filtered threshold change is confirmed. | Reading is buffered and published to SSE subscribers. |
 | `BufferFlushed` | Flusher interval runs or `FLUSH_EVERY_READINGS` is reached and buffer has readings. | Readings are inserted into SQLite. |
-| `RetentionCleanup` | Retention interval runs. | Old readings are deleted from SQLite. |
+| `RetentionCleanup` | Retention interval runs. | Old readings are deleted from SQLite and cleanup status is updated for `/api/system/status`. |
 | `SseSubscribed` | Client connects to `/api/stream`. | Latest known readings are sent before live events. |
 
 ## Terminology

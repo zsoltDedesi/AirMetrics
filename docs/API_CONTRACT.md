@@ -196,6 +196,44 @@ Validation:
 - Supported relative forms include `24h`, `30m`, and `now-24h`.
 - Numeric strings are treated as Unix timestamps.
 
+### GET /api/system/status
+
+Purpose:
+
+- Return operational metadata that is useful for the dashboard but is not part of readiness.
+
+Request:
+
+- No body.
+
+Response:
+
+```json
+{
+  "sensor_mode": "hardware",
+  "retention_hours": 24,
+  "retention_interval_seconds": 3600.0,
+  "last_cleanup_ts": 1710000000,
+  "last_cleanup_deleted_count": 12
+}
+```
+
+Fields:
+
+| Field | Type | Required | Notes |
+| --- | --- | ---: | --- |
+| `sensor_mode` | string | yes | Current sensor runtime mode. |
+| `retention_hours` | integer | yes | Configured retention window. |
+| `retention_interval_seconds` | number | yes | Configured retention task interval. |
+| `last_cleanup_ts` | integer or null | yes | Unix timestamp for the last successful retention cleanup; `null` before the first run. |
+| `last_cleanup_deleted_count` | integer or null | yes | Number of rows deleted by the last cleanup; `null` before the first run. |
+
+Status codes:
+
+| Status | Meaning |
+| ---: | --- |
+| 200 | Status query succeeded. |
+
 ### GET /api/stream
 
 Purpose:

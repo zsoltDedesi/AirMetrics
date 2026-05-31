@@ -33,6 +33,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-30 | Opted backend image GitHub Actions workflow into Node.js 24 JavaScript action runtime. | `.github/workflows/backend-image.yml`, `docs/workflows.md` |
 | 2026-05-31 | Added backend sensor runtime modes, mock sensors, physical-range reading validation, AM2302 failure tracking, and count-based buffer flushing. | `Backend/app/`, `Backend/airmetrics.env.example`, `docs/` |
 | 2026-05-31 | Added AM2302-only 5-sample median filtering with 2-reading confirmation before threshold emission. | `Backend/app/services/reading_filter.py`, `Backend/app/services/sampler.py`, `Backend/app/main.py`, `docs/` |
+| 2026-05-31 | Exposed retention cleanup metadata through `/api/system/status` and wired the frontend Last cleanup tile to it. | `Backend/app/api/system.py`, `Backend/app/services/tasks.py`, `Frontend/src/views/HomeView.vue`, `docs/API_CONTRACT.md` |
 
 ## Validation Already Run
 
@@ -49,6 +50,8 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | Direct `validate_sensor_data` check for valid DS18B20/AM2302 values and invalid spike/humidity values. | passed |
 | 2026-05-31 | `python3 -m compileall app` from `Backend/` after AM2302 filter changes. | passed |
 | 2026-05-31 | Direct `MedianConfirmationFilter` check for first reading, single-spike suppression, and sustained-change emission. | passed |
+| 2026-05-31 | `python3 -m compileall app` after `/api/system/status` changes. | passed |
+| 2026-05-31 | `npm run build` after frontend system status wiring. | passed; Vite still reports the existing large chunk warning from ECharts dependencies |
 
 ## Known Issues
 
@@ -58,7 +61,6 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | API has no authentication | Unsafe for public exposure. | Keep on trusted network or add auth before exposure. |
 | CORS is permissive | Broad browser access if network-exposed. | Restrict origins before production-style deployment. |
 | AM2302 filter constants are not field-tuned | Default 5-sample median and 2-reading confirmation may need adjustment after real sensor observation. | Validate against Raspberry Pi hardware data. |
-| Last cleanup time is not exposed by API | Frontend cannot display a real cleanup timestamp. | Add a backend status/config endpoint if this metric is needed. |
 | ECharts increases frontend bundle size | Vite warns that the main production chunk exceeds 500 kB. | Consider route/component-level dynamic import or Rollup manual chunks if bundle size matters. |
 
 ## Current Assumptions
@@ -72,4 +74,4 @@ Keep this file concise. Remove outdated details when they no longer matter.
 
 1. Add backend unit tests for `parse_since`, `Sampler._should_emit`, reading validation, median filtering, and sensor-mode startup helpers.
 2. Tune AM2302 filter constants after Raspberry Pi hardware observation.
-3. Add backend-exposed operational status for cleanup timing and threshold values if the dashboard should show those as live metrics.
+3. Add backend-exposed threshold values if the dashboard should show those as live metrics.

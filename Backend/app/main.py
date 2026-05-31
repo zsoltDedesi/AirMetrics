@@ -15,7 +15,7 @@ from app.sensors.mock import MockSensor
 from app.services.env_loader import settings
 from app.services.reading_filter import MedianConfirmationFilter
 from app.services.sampler import Sampler
-from app.services.tasks import flush_buffer, flusher, retention
+from app.services.tasks import CleanupHandler, flush_buffer, flusher, retention
 from app.stream import SseHub
 
 ReadingHandler = Callable[[Reading], Awaitable[None]]
@@ -121,6 +121,7 @@ def create_background_tasks(
     db: Database,
     db_conn: aiosqlite.Connection,
     flush_lock: asyncio.Lock,
+    on_cleanup: CleanupHandler,
 ) -> list[asyncio.Task]:
     tasks = [
         asyncio.create_task(
@@ -133,6 +134,7 @@ def create_background_tasks(
                 db_conn,
                 settings.RETENTION_INTERVAL_SECONDS,
                 settings.RETENTION_HOURS,
+                on_cleanup=on_cleanup,
             ),
             name="retention",
         ),
@@ -165,6 +167,14 @@ async def lifespan(app: FastAPI):
     buffer: deque[Reading] = deque(maxlen=int(settings.BUFFER_MAX_READINGS))
     flush_lock = asyncio.Lock()
     sensors = create_sensor_drivers()
+    runtime_status = {
+        "last_cleanup_ts": None,
+        "last_cleanup_deleted_count": None,
+    }
+
+    def update_cleanup_status(cleanup_ts: int, deleted_count: int) -> None:
+        runtime_status["last_cleanup_ts"] = cleanup_ts
+        runtime_status["last_cleanup_deleted_count"] = deleted_count
 
     async def on_reading_change(reading: Reading) -> None:
         async with flush_lock:
@@ -191,6 +201,7 @@ async def lifespan(app: FastAPI):
         db=db,
         db_conn=db_conn,
         flush_lock=flush_lock,
+        on_cleanup=update_cleanup_status,
     )
 
     app.state.hub = hub
@@ -198,6 +209,7 @@ async def lifespan(app: FastAPI):
     app.state.sensor_mode = settings.SENSOR_MODE
     app.state.db_conn = db_conn
     app.state.db = db
+    app.state.runtime_status = runtime_status
 
     try:
         yield

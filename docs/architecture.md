@@ -75,6 +75,7 @@ Purpose:
 - Persist readings to SQLite.
 - Expose REST APIs and a Server-Sent Events stream.
 - Report liveness and hardware-aware readiness.
+- Expose operational dashboard metadata such as retention cleanup status.
 
 Technology:
 
@@ -180,7 +181,8 @@ Schema change approach:
 ```text
 1. Client calls /api/health/live for process liveness.
 2. Client calls /api/health/ready for database and sensor readiness.
-3. Backend reports hardware-sensitive readiness flags.
+3. Client calls /api/system/status for operational metadata.
+4. Backend reports hardware-sensitive readiness flags and runtime metadata.
 ```
 
 ## Architectural Boundaries
