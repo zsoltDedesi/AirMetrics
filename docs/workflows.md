@@ -103,10 +103,16 @@ Review should check:
 ## Release Workflow
 
 Backend image releases are handled by `.github/workflows/backend-image.yml`.
+Frontend image releases are handled by `.github/workflows/frontend-image.yml`.
 
-Trigger:
+Backend trigger:
 
 - Push tags matching `backend-v*.*.*`.
+- Manual `workflow_dispatch`.
+
+Frontend trigger:
+
+- Push tags matching `frontend-v*.*.*`.
 - Manual `workflow_dispatch`.
 
 Published image:
@@ -115,18 +121,39 @@ Published image:
 ghcr.io/<repository-owner>/airmetrics-backend
 ```
 
-Tags:
+Frontend image:
+
+```text
+ghcr.io/<repository-owner>/frontend-airmetrics
+```
+
+Backend tags:
 
 - `latest`
 - the Git tag when triggered by a tag push
 - `manual-<short-sha>` when triggered manually
 
-Build settings:
+Frontend tags:
+
+- `frontend-latest`
+- the Git tag when triggered by a `frontend-v*.*.*` tag push
+- `frontend-manual-<short-sha>` when triggered manually
+
+Backend build settings:
 
 - Context: `./Backend`
 - Dockerfile: `./Backend/Dockerfile`
 - Platform: `linux/arm64`
 - Push: enabled
+- JavaScript GitHub Actions runtime: opt in to Node.js 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`.
+
+Frontend build settings:
+
+- Context: `./Frontend`
+- Dockerfile: `./Frontend/Dockerfile`
+- Platform: `linux/arm64`
+- Push: enabled
+- Build argument: `VITE_API_BASE_BACKEND_URL=/api`
 - JavaScript GitHub Actions runtime: opt in to Node.js 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`.
 
 Backend release process:
@@ -164,6 +191,29 @@ Run workflow_dispatch from the repository Actions tab.
 The generated non-version tag is manual-<short-sha>.
 ```
 
+Create and push a frontend tag:
+
+```bash
+git tag frontend-v0.1.0
+git push origin frontend-v0.1.0
+```
+
+Deploy frontend on Raspberry Pi:
+
+```bash
+cd Frontend
+docker compose pull
+docker compose up -d
+docker compose logs -f frontend
+```
+
+Manual frontend image build:
+
+```text
+Run workflow_dispatch from the repository Actions tab.
+The generated non-version tag is frontend-manual-<short-sha>.
+```
+
 ## Hotfix Workflow
 
 Use this for urgent production or deployed Raspberry Pi fixes.
@@ -196,6 +246,16 @@ npm run dev
 ```
 
 The frontend must know where the backend API lives through `VITE_API_BASE_BACKEND_URL`.
+
+## Local Frontend Docker Workflow
+
+```bash
+cd Frontend
+docker compose up --build -d
+docker compose logs -f frontend
+```
+
+The frontend container serves the app on port `8080`. Browser `/api` requests are proxied to `BACKEND_UPSTREAM`.
 
 ## Documentation Workflow
 

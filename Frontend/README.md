@@ -25,6 +25,14 @@ npm run build
 npm run preview
 ```
 
+Docker build and run:
+
+```bash
+docker compose up --build -d
+```
+
+The container serves the dashboard on port `8080`. It builds the app with `VITE_API_BASE_BACKEND_URL=/api` and proxies `/api` to `BACKEND_UPSTREAM` at runtime.
+
 ## Backend API (dev setup)
 
 The backend API is served under the `/api` prefix (default backend port: `8000`).

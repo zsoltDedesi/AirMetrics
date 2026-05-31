@@ -145,6 +145,13 @@ cd Frontend
 npm run build
 ```
 
+Frontend container build and run:
+
+```bash
+cd Frontend
+docker compose up --build -d
+```
+
 Backend container build and run:
 
 ```bash
@@ -168,6 +175,13 @@ Frontend preview:
 ```bash
 cd Frontend
 npm run preview
+```
+
+Frontend Docker logs:
+
+```bash
+cd Frontend
+docker compose logs -f frontend
 ```
 
 Stop backend Docker service:

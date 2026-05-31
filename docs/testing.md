@@ -149,6 +149,14 @@ cd Frontend
 npm run preview
 ```
 
+Frontend Docker build:
+
+```bash
+cd Frontend
+docker compose up --build -d
+docker compose ps
+```
+
 No project-specific `pytest`, `npm run test`, lint, or format scripts are currently configured.
 
 ### Database
@@ -227,6 +235,7 @@ For frontend changes:
 - [ ] Responsive layout is acceptable.
 - [ ] No unnecessary state duplication was introduced.
 - [ ] `npm run build` passes.
+- [ ] Frontend Docker image serves `/` and proxies `/api/health/live` when deployment behavior changes.
 
 ## Database Validation
 

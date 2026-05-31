@@ -15,13 +15,14 @@ Raspberry Pi hardware sensors
   -> HTTP API on port 8000
 ```
 
-The frontend is a separate Vue/Vite app. No frontend deployment workflow is currently configured.
+The frontend is a separate Vue/Vite app served by its own Nginx container. It can be deployed separately from the backend and proxies browser `/api` requests to the configured backend upstream.
 
 ## Containers
 
 | Container | Purpose | Exposed Port | Internal Port |
 | --- | --- | ---: | ---: |
 | `airmetrics-backend` | Serves FastAPI API, samplers, SSE, SQLite persistence. | 8000 | 8000 |
+| `airmetrics-frontend` | Serves the built Vue dashboard and proxies `/api` to the backend. | 8080 | 8080 |
 
 ## Image
 
@@ -31,11 +32,16 @@ Backend image:
 ghcr.io/zsoltdedesi/airmetrics-backend:latest
 ```
 
+Frontend image:
+
+```text
+ghcr.io/zsoltdedesi/frontend-airmetrics:frontend-latest
+```
+
 GitHub Actions builds and pushes:
 
-- `latest`
-- `backend-v*.*.*` tag name on tag push
-- `manual-<short-sha>` on manual workflow dispatch
+- backend workflow: `latest`, `backend-v*.*.*`, and `manual-<short-sha>`
+- frontend workflow: `frontend-latest`, `frontend-v*.*.*`, and `frontend-manual-<short-sha>`
 
 Target platform:
 
@@ -92,6 +98,12 @@ Backend variables are loaded from `/app/airmetrics.env` inside the container.
 | `RETENTION_INTERVAL_SECONDS` | no | backend | Retention task interval. |
 | `RETENTION_HOURS` | no | backend | Data retention window. |
 
+Frontend container variables:
+
+| Name | Required | Runtime | Description |
+| --- | ---: | --- | --- |
+| `BACKEND_UPSTREAM` | no | frontend | Backend origin proxied by Nginx for `/api`; defaults to `http://host.docker.internal:8000` in `Frontend/docker-compose.yml`. Do not include a trailing slash. |
+
 ## Deployment Steps
 
 Prepare host:
@@ -124,6 +136,21 @@ cd Backend
 docker compose up -d --build
 ```
 
+Deploy frontend separately:
+
+```bash
+cd Frontend
+docker compose pull
+docker compose up -d
+```
+
+Build frontend locally instead of pulling:
+
+```bash
+cd Frontend
+docker compose up -d --build
+```
+
 ## Migrations and Seeds
 
 Migrations:
@@ -149,6 +176,8 @@ After deployment, check:
 - [ ] `curl http://localhost:8000/api/health/live` succeeds.
 - [ ] `curl http://localhost:8000/api/health/ready` reports expected DB and sensor state.
 - [ ] `curl -N http://localhost:8000/api/stream` stays open and sends events.
+- [ ] `curl http://localhost:8080/` returns the frontend shell when the frontend container is deployed.
+- [ ] `curl http://localhost:8080/api/health/live` reaches the backend through the frontend proxy.
 - [ ] `/var/lib/airmetrics/airmetrics.db` exists after readings flush.
 - [ ] Logs do not show startup configuration errors.
 

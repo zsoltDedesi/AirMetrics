@@ -85,8 +85,9 @@ Tasks:
 - [x] Raspberry Pi compose file.
 - [x] GHCR image workflow.
 - [x] ARM64 build target.
+- [x] Frontend Dockerfile.
+- [x] Frontend GHCR image workflow.
 - [ ] Document reverse proxy setup if one is added.
-- [ ] Add frontend deployment workflow if needed.
 
 ### Phase 4 - Hardening
 
@@ -122,6 +123,7 @@ Tasks:
 | 2026-05-31 | Sensor runtime modes and backend reading validation added | Backend can run in `hardware`, `degraded`, `mock`, or `disabled` mode; impossible readings are rejected before buffering. |
 | 2026-05-31 | AM2302 noise filtering added | AM2302 emissions use 5-sample median smoothing plus 2-reading confirmation. |
 | 2026-05-31 | Cleanup status exposed to dashboard | `/api/system/status` reports retention metadata and the frontend Last cleanup tile uses it. |
+| 2026-05-31 | Frontend Docker image workflow added | Frontend builds into an Nginx image published as `frontend-airmetrics` with `frontend-*` tags. |
 
 ## Current Follow-Ups
 
@@ -138,4 +140,4 @@ Tasks:
 | No automated test suite | Regression risk grows with changes. | Start with backend unit tests for pure logic. |
 | No migration tooling | Schema changes are risky after deployment. | Add migration strategy before incompatible DB changes. |
 | AM2302 filter not field-tuned | Default 5-sample median and 2-reading confirmation may be too slow or too permissive in the final hardware setup. | Observe live data and tune if needed. |
-| Frontend deployment not automated | Dashboard release process is manual or undefined. | Define desired frontend hosting/deployment model. |
+| Frontend and backend deploy separately | Runtime wiring depends on `BACKEND_UPSTREAM` matching the deployed backend. | Validate frontend `/api` proxy after deployment. |

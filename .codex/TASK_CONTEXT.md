@@ -14,7 +14,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 - Backend reads DS18B20 and AM2302/DHT22 sensors when `SENSOR_MODE` enables them, filters AM2302 noise, buffers significant validated readings, persists to SQLite, and exposes REST plus SSE APIs under `/api`.
 - Backend sensor modes are `hardware`, `degraded`, `mock`, and `disabled`; `hardware` remains the default fail-fast mode.
 - Frontend is a Vue 3 + Vite dashboard using Naive UI, Axios, Apache ECharts, and `vue-echarts`.
-- Backend Docker deployment targets Raspberry Pi ARM64 and publishes to GHCR through GitHub Actions.
+- Backend and frontend Docker deployments target Raspberry Pi ARM64 and publish separate GHCR images through GitHub Actions.
 - Automated test suite is not configured yet.
 - API authentication is not implemented; current assumption is trusted local network usage.
 
@@ -35,6 +35,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | Added AM2302-only 5-sample median filtering with 2-reading confirmation before threshold emission. | `Backend/app/services/reading_filter.py`, `Backend/app/services/sampler.py`, `Backend/app/main.py`, `docs/` |
 | 2026-05-31 | Exposed retention cleanup metadata through `/api/system/status` and wired the frontend Last cleanup tile to it. | `Backend/app/api/system.py`, `Backend/app/services/tasks.py`, `Frontend/src/views/HomeView.vue`, `docs/API_CONTRACT.md` |
 | 2026-05-31 | Added configurable AM2302 humidity calibration offset. | `Backend/app/sensors/am2302.py`, `Backend/app/services/env_loader.py`, `Backend/airmetrics.env.example`, `docs/` |
+| 2026-05-31 | Added frontend Docker image, compose file, Nginx proxy config, and GHCR workflow using `frontend-*` tags. | `Frontend/Dockerfile`, `Frontend/docker-compose.yml`, `.github/workflows/frontend-image.yml`, `docs/` |
 
 ## Validation Already Run
 
@@ -54,6 +55,8 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | `python3 -m compileall app` after `/api/system/status` changes. | passed |
 | 2026-05-31 | `npm run build` after frontend system status wiring. | passed; Vite still reports the existing large chunk warning from ECharts dependencies |
 | 2026-05-31 | `python3 -m compileall app` after AM2302 humidity calibration changes. | passed |
+| 2026-05-31 | `npm run build` after frontend Docker image changes. | passed; Vite still reports the existing large chunk warning from ECharts dependencies |
+| 2026-05-31 | Local frontend Docker build. | not run; `docker` command is not installed in this environment |
 
 ## Known Issues
 
@@ -71,6 +74,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 - Deployment target is a Raspberry Pi with Docker; sensor hardware is expected in `hardware` mode and optional by mode otherwise.
 - SQLite database is local to the host and mounted into the container.
 - Frontend `VITE_API_BASE_BACKEND_URL` includes the `/api` prefix unless a proxy rewrites paths.
+- Frontend Docker image is built with `VITE_API_BASE_BACKEND_URL=/api`; Nginx proxies `/api` to `BACKEND_UPSTREAM`.
 - All current backend routes are under `/api`.
 
 ## Next Recommended Steps

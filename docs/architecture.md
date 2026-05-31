@@ -35,6 +35,7 @@ Technology:
 - Charting: Apache ECharts through `vue-echarts`
 - Build tool: Vite
 - API client: Axios
+- Container runtime: Nginx serving static assets and proxying `/api` to the backend upstream.
 
 Important folders:
 
@@ -263,11 +264,10 @@ Avoid:
 | In-memory buffer | Recent readings are buffered before count-based or periodic flush. | Readings can be lost if the process exits before a flush. |
 | No auth | API endpoints currently have no authentication. | Keep the service on a trusted network unless auth is added. |
 | Permissive CORS | Backend currently allows all origins. | Restrict before exposing beyond local development/trusted network. |
-| Backend-only CI image workflow | Current GitHub workflow publishes only the backend image. | Frontend deployment is not automated. |
+| Separate frontend/backend deployment | Backend and frontend are published as separate images. | API origin must be configured through the frontend proxy upstream. |
 
 ## Open Architecture Questions
 
 | Question | Context | Status |
 | --- | --- | --- |
-| Should frontend deployment be automated? | Current CI/CD only publishes backend image. | open |
 | Should API authentication be added? | Current API is suitable only for trusted local networks. | open |
