@@ -18,6 +18,7 @@ Rules:
 
 - `ds18b20` provides temperature readings from Linux 1-Wire sysfs.
 - `am2302` provides temperature and relative humidity readings through GPIO.
+- AM2302 temperature and relative humidity can be calibrated independently through backend settings.
 - Sensors are initialized during backend startup according to `SENSOR_MODE`.
 - Sensor readiness is hardware-sensitive and can be false while the HTTP service is alive.
 - `hardware` mode requires expected sensors to initialize successfully.
@@ -178,6 +179,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | `DS18B20_DEVICE_ID` | Must be configured in `hardware` mode. | Settings validation fails or sensor init raises not found. |
 | DS18B20 read | Device file must exist and report CRC `YES`. | Read returns no emitted reading when invalid. |
 | AM2302 read | Temperature and humidity must be non-null after retries. | Runtime errors are logged by sampler. |
+| AM2302 humidity calibration | `AM2302_HUMIDITY_CALIBRATION_OFFSET` is added to the raw relative humidity reading before validation, filtering, buffering, and display. | Calibrated value outside `0%..100%` is rejected. |
 | DS18B20 emitted range | Temperature must be finite and between `-55 C` and `125 C`. | Reading is logged and rejected before buffering. |
 | AM2302 emitted range | Temperature must be finite and between `-40 C` and `80 C`; humidity must be finite and between `0%` and `100%`. | Reading is logged and rejected before buffering. |
 | `since` query | Must parse as supported absolute or relative timestamp. | `/api/history` returns HTTP 400. |

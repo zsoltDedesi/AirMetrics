@@ -313,4 +313,5 @@ Related files:
 - No automated backend or frontend test suite is currently present.
 - No dedicated frontend CI workflow is present.
 - AM2302 filter constants are not field-tuned yet.
+- AM2302 humidity calibration needs field validation against a trusted reference sensor.
 - CORS is permissive and should be restricted before exposing the service outside a trusted network.

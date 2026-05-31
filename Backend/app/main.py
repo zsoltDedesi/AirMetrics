@@ -111,7 +111,10 @@ def _create_ds18b20() -> ManagedSensor:
 def _create_am2302() -> ManagedSensor:
     from app.sensors.am2302 import AM2302
 
-    return AM2302(calibration_offset=settings.AM2302_CALIBRATION_OFFSET)
+    return AM2302(
+        calibration_offset=settings.AM2302_CALIBRATION_OFFSET,
+        humidity_calibration_offset=settings.AM2302_HUMIDITY_CALIBRATION_OFFSET,
+    )
 
 
 def create_background_tasks(

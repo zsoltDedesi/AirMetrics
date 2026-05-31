@@ -33,6 +33,10 @@ class Settings(BaseSettings):
         1.0,
         description="Calibration offset applied to AM2302 temperature measurements.",
     )
+    AM2302_HUMIDITY_CALIBRATION_OFFSET: float = Field(
+        0.0,
+        description="Calibration offset added to AM2302 relative humidity measurements.",
+    )
     AM2302_SAMPLING_INTERVAL_SECONDS: float = Field(
         2.0,
         description="Polling interval in seconds for AM2302 temperature/humidity reads.",

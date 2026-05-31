@@ -13,11 +13,13 @@ class AM2302:
         self,
         pin: Any | None = None,
         calibration_offset: float = 1.5,
+        humidity_calibration_offset: float = 0.0,
         *,
         use_pulseio: bool = False,
     ):
         self.pin = pin or board.D6
         self.calibration_offset = calibration_offset
+        self.humidity_calibration_offset = humidity_calibration_offset
 
         self._dht = adafruit_dht.DHT22(self.pin, use_pulseio=use_pulseio)
         self._lock = threading.Lock()
@@ -71,7 +73,7 @@ class AM2302:
 
         return {
             "temperature": self.temperature - float(self.calibration_offset),
-            "humidity": self.humidity,
+            "humidity": self.humidity + float(self.humidity_calibration_offset),
             "ts": self.measure_timestamp,
         }
 

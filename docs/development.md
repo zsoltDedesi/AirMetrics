@@ -64,6 +64,7 @@ Backend variables:
 | `DB_PATH` | yes | `/var/lib/airmetrics/airmetrics.db` | Absolute SQLite database file path. |
 | `DS18B20_SAMPLING_INTERVAL_SECONDS` | no | `2.0` | Polling interval for DS18B20. |
 | `AM2302_CALIBRATION_OFFSET` | no | `1.0` | Temperature calibration offset for AM2302. |
+| `AM2302_HUMIDITY_CALIBRATION_OFFSET` | no | `0.0` | Relative humidity calibration offset added to AM2302 readings; use negative values to lower displayed humidity. |
 | `AM2302_SAMPLING_INTERVAL_SECONDS` | no | `2.0` | Polling interval for AM2302. |
 | `THRESHOLD_DELTA_T_HIGH` | no | `0.125` | Temperature delta threshold for high-precision sensor readings. |
 | `THRESHOLD_DELTA_T_LOW` | no | `0.3` | Temperature delta threshold for lower-precision sensor readings. |

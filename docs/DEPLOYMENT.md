@@ -81,6 +81,7 @@ Backend variables are loaded from `/app/airmetrics.env` inside the container.
 | `DB_PATH` | yes | backend | Absolute SQLite file path. |
 | `DS18B20_SAMPLING_INTERVAL_SECONDS` | no | backend | DS18B20 polling interval. |
 | `AM2302_CALIBRATION_OFFSET` | no | backend | AM2302 temperature calibration offset. |
+| `AM2302_HUMIDITY_CALIBRATION_OFFSET` | no | backend | AM2302 relative humidity calibration offset. |
 | `AM2302_SAMPLING_INTERVAL_SECONDS` | no | backend | AM2302 polling interval. |
 | `THRESHOLD_DELTA_T_HIGH` | no | backend | DS18B20 significant-change threshold. |
 | `THRESHOLD_DELTA_T_LOW` | no | backend | AM2302 temperature threshold. |

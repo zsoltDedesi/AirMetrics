@@ -245,6 +245,7 @@ For database changes:
 - [ ] `SENSOR_MODE` is set intentionally for the validation target.
 - [ ] `DS18B20_DEVICE_ID` matches the real device folder when `SENSOR_MODE=hardware`.
 - [ ] AM2302/DHT22 is wired to the configured GPIO pin.
+- [ ] AM2302 humidity calibration is checked against a trusted reference sensor after thermal equilibrium.
 - [ ] Docker container has required GPIO devices mounted.
 - [ ] `/var/lib/airmetrics` exists and is writable.
 - [ ] `Backend/airmetrics.env` is mounted read-only into the container.

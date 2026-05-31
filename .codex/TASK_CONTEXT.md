@@ -34,6 +34,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | Added backend sensor runtime modes, mock sensors, physical-range reading validation, AM2302 failure tracking, and count-based buffer flushing. | `Backend/app/`, `Backend/airmetrics.env.example`, `docs/` |
 | 2026-05-31 | Added AM2302-only 5-sample median filtering with 2-reading confirmation before threshold emission. | `Backend/app/services/reading_filter.py`, `Backend/app/services/sampler.py`, `Backend/app/main.py`, `docs/` |
 | 2026-05-31 | Exposed retention cleanup metadata through `/api/system/status` and wired the frontend Last cleanup tile to it. | `Backend/app/api/system.py`, `Backend/app/services/tasks.py`, `Frontend/src/views/HomeView.vue`, `docs/API_CONTRACT.md` |
+| 2026-05-31 | Added configurable AM2302 humidity calibration offset. | `Backend/app/sensors/am2302.py`, `Backend/app/services/env_loader.py`, `Backend/airmetrics.env.example`, `docs/` |
 
 ## Validation Already Run
 
@@ -52,6 +53,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | Direct `MedianConfirmationFilter` check for first reading, single-spike suppression, and sustained-change emission. | passed |
 | 2026-05-31 | `python3 -m compileall app` after `/api/system/status` changes. | passed |
 | 2026-05-31 | `npm run build` after frontend system status wiring. | passed; Vite still reports the existing large chunk warning from ECharts dependencies |
+| 2026-05-31 | `python3 -m compileall app` after AM2302 humidity calibration changes. | passed |
 
 ## Known Issues
 
@@ -61,6 +63,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | API has no authentication | Unsafe for public exposure. | Keep on trusted network or add auth before exposure. |
 | CORS is permissive | Broad browser access if network-exposed. | Restrict origins before production-style deployment. |
 | AM2302 filter constants are not field-tuned | Default 5-sample median and 2-reading confirmation may need adjustment after real sensor observation. | Validate against Raspberry Pi hardware data. |
+| AM2302 humidity calibration is not field-validated | DHT22-class humidity readings can differ from a nearby reference sensor. | Compare after sensors stabilize side by side and set `AM2302_HUMIDITY_CALIBRATION_OFFSET`. |
 | ECharts increases frontend bundle size | Vite warns that the main production chunk exceeds 500 kB. | Consider route/component-level dynamic import or Rollup manual chunks if bundle size matters. |
 
 ## Current Assumptions
