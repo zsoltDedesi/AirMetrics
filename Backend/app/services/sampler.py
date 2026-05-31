@@ -6,6 +6,7 @@ from typing import Awaitable, Callable, Protocol
 from pydantic_core import ValidationError
 
 from app.db import Reading
+from app.services.reading_validation import validate_sensor_data
 
 ReadingHandler = Callable[[Reading], Awaitable[None]]
 
@@ -45,6 +46,12 @@ class Sampler:
             return
 
         if raw_sensor_data is None:
+            return
+
+        try:
+            validate_sensor_data(self.sensor_name, raw_sensor_data)
+        except ValueError as e:
+            print(f"Invalid reading for {self.sensor_name}: {e}")
             return
 
         try:

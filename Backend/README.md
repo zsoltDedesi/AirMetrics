@@ -4,11 +4,11 @@ FastAPI service that samples sensors, buffers readings, persists them to SQLite,
 
 ## Requirements
 
-- Raspberry Pi host recommended (GPIO + 1‑Wire).
-- DS18B20 via Linux sysfs at `/sys/bus/w1/devices` (1‑Wire).
+- Raspberry Pi host recommended (GPIO + 1-Wire).
+- DS18B20 via Linux sysfs at `/sys/bus/w1/devices` (1-Wire).
 - AM2302/DHT22 via GPIO (Blinka/Adafruit libraries).
 
-This backend currently expects the sensors to be present at startup. If the hardware or device paths are missing, the service may fail during initialization.
+By default the backend runs in `hardware` sensor mode, where configured sensors must initialize successfully. For hardware-free or partial-hardware runs, set `SENSOR_MODE` to `mock`, `degraded`, or `disabled`.
 
 ## Configuration (`airmetrics.env`)
 
@@ -21,7 +21,8 @@ cp airmetrics.env.example airmetrics.env
 Common settings:
 
 - `DB_PATH` (required): absolute path to the SQLite DB file (directory must exist and be writable). Docker setup uses `/var/lib/airmetrics/airmetrics.db`.
-- `DS18B20_DEVICE_ID` (required): folder name under `/sys/bus/w1/devices` (typically `28-...`).
+- `SENSOR_MODE` (optional): `hardware`, `degraded`, `mock`, or `disabled`; defaults to `hardware`.
+- `DS18B20_DEVICE_ID` (required in `hardware` mode): folder name under `/sys/bus/w1/devices` (typically `28-...`).
 - Sampling/threshold/retention settings: see `airmetrics.env.example`.
 
 ## Run with Docker (recommended on Raspberry Pi)
@@ -47,7 +48,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-You still need `airmetrics.env` present, and the expected sensor device paths available on your machine.
+You still need `airmetrics.env` present. Expected sensor device paths are required only when `SENSOR_MODE=hardware`; use `mock`, `degraded`, or `disabled` for hardware-free startup.
 
 ## API
 

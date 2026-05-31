@@ -25,6 +25,9 @@ class AM2302:
         self.temperature: float | None = None
         self.humidity: float | None = None
         self.measure_timestamp: int | None = None
+        self.last_failure_timestamp: int | None = None
+        self.last_error: str | None = None
+        self.consecutive_failures = 0
         self.hard_failed = False
 
     def close(self) -> None:
@@ -44,9 +47,10 @@ class AM2302:
                         time.sleep(retry_delay_seconds)
                         continue
 
+                    self._record_failure(exc)
                     raise
-                except Exception:
-                    self.hard_failed = True
+                except Exception as exc:
+                    self._record_failure(exc, hard=True)
                     raise
 
             raise RuntimeError("AM2302 read failed") from last_error
@@ -61,6 +65,8 @@ class AM2302:
         self.temperature = float(temperature)
         self.humidity = float(humidity)
         self.measure_timestamp = int(time.time())
+        self.last_error = None
+        self.consecutive_failures = 0
         self.hard_failed = False
 
         return {
@@ -73,7 +79,13 @@ class AM2302:
         if self.measure_timestamp is None:
             return False
 
-        return (time.time() - self.measure_timestamp) <= 60
+        return (time.time() - self.measure_timestamp) <= 60 and self.consecutive_failures < 3
 
     def sensor_is_connected(self) -> bool:
         return self._dht is not None and not self.hard_failed
+
+    def _record_failure(self, exc: Exception, *, hard: bool = False) -> None:
+        self.last_failure_timestamp = int(time.time())
+        self.last_error = str(exc)
+        self.consecutive_failures += 1
+        self.hard_failed = hard

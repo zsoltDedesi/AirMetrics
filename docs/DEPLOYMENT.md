@@ -76,7 +76,8 @@ Backend variables are loaded from `/app/airmetrics.env` inside the container.
 
 | Name | Required | Runtime | Description |
 | --- | ---: | --- | --- |
-| `DS18B20_DEVICE_ID` | yes | backend | Linux 1-Wire sensor folder. |
+| `SENSOR_MODE` | no | backend | Sensor runtime mode: `hardware`, `degraded`, `mock`, or `disabled`; defaults to `hardware`. |
+| `DS18B20_DEVICE_ID` | yes in `hardware` mode | backend | Linux 1-Wire sensor folder. |
 | `DB_PATH` | yes | backend | Absolute SQLite file path. |
 | `DS18B20_SAMPLING_INTERVAL_SECONDS` | no | backend | DS18B20 polling interval. |
 | `AM2302_CALIBRATION_OFFSET` | no | backend | AM2302 temperature calibration offset. |
@@ -86,6 +87,7 @@ Backend variables are loaded from `/app/airmetrics.env` inside the container.
 | `THRESHOLD_DELTA_RH` | no | backend | AM2302 humidity threshold. |
 | `BUFFER_MAX_READINGS` | no | backend | In-memory buffer length. |
 | `FLUSH_EVERY_SECONDS` | no | backend | Periodic database flush interval. |
+| `FLUSH_EVERY_READINGS` | no | backend | Count threshold that triggers an immediate database flush. |
 | `RETENTION_INTERVAL_SECONDS` | no | backend | Retention task interval. |
 | `RETENTION_HOURS` | no | backend | Data retention window. |
 
@@ -103,7 +105,7 @@ Configure backend:
 ```bash
 cd Backend
 cp airmetrics.env.example airmetrics.env
-# edit DS18B20_DEVICE_ID and DB_PATH
+# edit SENSOR_MODE, DS18B20_DEVICE_ID, and DB_PATH as needed
 ```
 
 Start or update container:
@@ -153,8 +155,7 @@ After deployment, check:
 
 The backend starts these background tasks in the FastAPI lifespan:
 
-- DS18B20 sampler.
-- AM2302 sampler.
+- Sensor samplers for sensors enabled by `SENSOR_MODE`.
 - Buffer flusher.
 - Retention cleanup.
 
@@ -163,3 +164,5 @@ Constraints:
 - The backend is intended as a single running replica.
 - Running multiple replicas against the same local hardware and SQLite file is not supported.
 - If a task fails internally, current behavior is to print errors and continue where implemented.
+- `SENSOR_MODE=hardware` keeps production-style fail-fast startup when required hardware is unavailable.
+- `SENSOR_MODE=disabled` starts without sensor drivers or sampler tasks, but still requires a valid `DB_PATH`.

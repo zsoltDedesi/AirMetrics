@@ -59,7 +59,8 @@ Backend variables:
 
 | Name | Required | Example | Description |
 | --- | ---: | --- | --- |
-| `DS18B20_DEVICE_ID` | yes | `28-000000000000` | Linux 1-Wire device folder under `/sys/bus/w1/devices`. |
+| `SENSOR_MODE` | no | `hardware` | Sensor runtime mode: `hardware`, `degraded`, `mock`, or `disabled`. |
+| `DS18B20_DEVICE_ID` | yes in `hardware` mode | `28-000000000000` | Linux 1-Wire device folder under `/sys/bus/w1/devices`. |
 | `DB_PATH` | yes | `/var/lib/airmetrics/airmetrics.db` | Absolute SQLite database file path. |
 | `DS18B20_SAMPLING_INTERVAL_SECONDS` | no | `2.0` | Polling interval for DS18B20. |
 | `AM2302_CALIBRATION_OFFSET` | no | `1.0` | Temperature calibration offset for AM2302. |
@@ -69,11 +70,20 @@ Backend variables:
 | `THRESHOLD_DELTA_RH` | no | `1.0` | Relative humidity delta threshold. |
 | `BUFFER_MAX_READINGS` | no | `10000` | Maximum in-memory buffer length. |
 | `FLUSH_EVERY_SECONDS` | no | `300.0` | Periodic database flush interval. |
-| `FLUSH_EVERY_READINGS` | no | `1000` | Configured count threshold; not currently used by the flusher. |
+| `FLUSH_EVERY_READINGS` | no | `1000` | Count threshold that triggers an immediate database flush. |
 | `RETENTION_INTERVAL_SECONDS` | no | `3600.0` | Retention task interval. |
 | `RETENTION_HOURS` | no | `24` | Number of hours to retain readings. |
 
 Optional backend values can stay empty in `airmetrics.env`; the settings loader ignores empty values and applies defaults.
+
+Sensor modes:
+
+| Mode | Behavior |
+| --- | --- |
+| `hardware` | Production-style mode. Required hardware must initialize successfully or startup fails. |
+| `degraded` | Backend starts when one or both sensors are unavailable; only available sensors get samplers. |
+| `mock` | Backend uses generated sensor readings for hardware-free development or demo. |
+| `disabled` | Backend starts without sensor drivers or sampler tasks. |
 
 Frontend environment:
 
@@ -101,7 +111,7 @@ source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-This requires `Backend/airmetrics.env` and the expected hardware/device paths. If developing without hardware, add explicit test doubles or isolate the changed module instead of assuming full app startup will work.
+This requires `Backend/airmetrics.env` and the expected hardware/device paths when `SENSOR_MODE=hardware`. Use `SENSOR_MODE=mock`, `degraded`, or `disabled` for hardware-free startup.
 
 Frontend local run:
 
@@ -251,8 +261,9 @@ Possible solution:
 
 - Check `Backend/airmetrics.env`.
 - Confirm `DB_PATH` is absolute and its parent directory exists and is writable.
-- Confirm `DS18B20_DEVICE_ID` matches a real `/sys/bus/w1/devices/28-*` folder.
-- Confirm Raspberry Pi sensor device paths are available.
+- If `SENSOR_MODE=hardware`, confirm `DS18B20_DEVICE_ID` matches a real `/sys/bus/w1/devices/28-*` folder.
+- If `SENSOR_MODE=hardware`, confirm Raspberry Pi sensor device paths are available.
+- Use `SENSOR_MODE=mock`, `degraded`, or `disabled` when starting without the sensor extension board.
 
 ### Frontend cannot reach backend
 

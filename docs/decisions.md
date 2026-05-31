@@ -248,10 +248,40 @@ Related files:
 
 ---
 
+## 2026-05-31 - Add explicit sensor runtime modes and backend reading validation
+
+Status: accepted
+
+Context:
+
+The Raspberry Pi is sometimes used without the sensor extension board attached. In that state, forcing hardware startup failures wastes time and makes local or alternate-device use awkward. Sensor data can also contain impossible spikes, so the backend needs a first line of defense before values are persisted.
+
+Decision:
+
+Add `SENSOR_MODE` with `hardware`, `degraded`, `mock`, and `disabled` modes. Keep `hardware` as the default fail-fast mode. Add backend-side physical-range validation before readings are emitted or persisted. Use `FLUSH_EVERY_READINGS` as a count-based flush trigger in addition to the periodic flush.
+
+Reasoning:
+
+Explicit modes make the runtime intent visible instead of inferring it from missing hardware. Physical-range validation keeps impossible readings out of SSE and SQLite while preserving the existing threshold-based emission model. Count-based flushing aligns implementation with the existing settings contract and reduces the chance that active periods remain buffered for the full time interval.
+
+Consequences:
+
+`DS18B20_DEVICE_ID` is required only in `hardware` mode. `degraded` mode can start with one or both sensors absent, `mock` mode supports hardware-free development, and `disabled` mode starts the API without samplers. In-range AM2302 noise is not filtered by this decision and still needs a separate filtering policy.
+
+Related files:
+
+- `Backend/app/main.py`
+- `Backend/app/services/env_loader.py`
+- `Backend/app/services/reading_validation.py`
+- `Backend/app/services/sampler.py`
+- `Backend/app/services/tasks.py`
+- `Backend/app/sensors/mock.py`
+
+---
+
 ## Known Gaps
 
 - No automated backend or frontend test suite is currently present.
 - No dedicated frontend CI workflow is present.
-- Backend startup is tightly coupled to sensor availability.
-- `FLUSH_EVERY_READINGS` exists in settings but is not currently used by the flusher.
+- AM2302 in-range measurement noise is not filtered yet.
 - CORS is permissive and should be restricted before exposing the service outside a trusted network.

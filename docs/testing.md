@@ -36,8 +36,10 @@ Good candidates:
 
 - `parse_since`
 - `Sampler._should_emit`
+- `validate_sensor_data`
 - SSE formatting helpers
 - settings validation edge cases
+- sensor-mode startup helpers with mocked drivers
 
 ### Integration Tests
 
@@ -237,7 +239,8 @@ For database changes:
 
 - [ ] 1-Wire is enabled on the Raspberry Pi.
 - [ ] DS18B20 appears under `/sys/bus/w1/devices/28-*`.
-- [ ] `DS18B20_DEVICE_ID` matches the real device folder.
+- [ ] `SENSOR_MODE` is set intentionally for the validation target.
+- [ ] `DS18B20_DEVICE_ID` matches the real device folder when `SENSOR_MODE=hardware`.
 - [ ] AM2302/DHT22 is wired to the configured GPIO pin.
 - [ ] Docker container has required GPIO devices mounted.
 - [ ] `/var/lib/airmetrics` exists and is writable.

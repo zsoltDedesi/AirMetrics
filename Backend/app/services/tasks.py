@@ -18,8 +18,10 @@ async def flush_buffer(
         return
 
     batch = list(buffer)
-    buffer.clear()
     await db.insert_many(db_conn, batch)
+
+    for _ in range(min(len(batch), len(buffer))):
+        buffer.popleft()
 
 
 async def flusher(
@@ -27,13 +29,15 @@ async def flusher(
     db: Database,
     db_conn: aiosqlite.Connection,
     interval_seconds: float,
+    flush_lock: asyncio.Lock,
 ) -> None:
     """Periodically flush buffered readings to the database."""
 
     while True:
         try:
             await asyncio.sleep(interval_seconds)
-            await flush_buffer(buffer, db, db_conn)
+            async with flush_lock:
+                await flush_buffer(buffer, db, db_conn)
         except asyncio.CancelledError:
             break
         except Exception as e:

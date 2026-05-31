@@ -70,7 +70,7 @@ Should avoid:
 
 Purpose:
 
-- Read local hardware sensors.
+- Read local hardware sensors when the selected sensor mode enables them.
 - Emit readings only when configured thresholds are exceeded.
 - Persist readings to SQLite.
 - Expose REST APIs and a Server-Sent Events stream.
@@ -83,6 +83,7 @@ Technology:
 - Authentication: none currently
 - Background jobs: asyncio tasks for sampling, buffer flushing, and retention cleanup
 - External integrations: Raspberry Pi 1-Wire sysfs and GPIO sensor libraries
+- Sensor runtime modes: `hardware`, `degraded`, `mock`, and `disabled`
 
 Important folders:
 
@@ -102,6 +103,7 @@ Responsibilities:
 - Expose APIs under `/api`.
 - Validate settings at startup.
 - Coordinate sensor drivers and sampler services.
+- Apply backend-side physical-range validation before readings are emitted.
 - Buffer emitted readings.
 - Coordinate SQLite persistence.
 - Publish live readings to SSE subscribers.
@@ -152,19 +154,20 @@ Schema change approach:
 
 ```text
 1. Sensor driver reads physical sensor data.
-2. Sampler creates a Reading model.
-3. Sampler checks temperature and humidity thresholds.
-4. Reading is appended to the in-memory buffer.
-5. Reading is published to SseHub.
-6. /api/stream sends the reading to subscribed frontend clients.
-7. Frontend updates displayed sensor values.
+2. Sampler validates the reading against sensor-specific physical limits.
+3. Sampler creates a Reading model.
+4. Sampler checks temperature and humidity thresholds.
+5. Reading is appended to the in-memory buffer.
+6. Reading is published to SseHub.
+7. /api/stream sends the reading to subscribed frontend clients.
+8. Frontend updates displayed sensor values.
 ```
 
 ### History Flow
 
 ```text
 1. Sampler emits significant readings into the buffer.
-2. Flusher task periodically writes the buffer to SQLite.
+2. Count-based or periodic flush writes the buffer to SQLite.
 3. Frontend requests /api/history?since=<value>.
 4. Backend parses the since value and queries SQLite.
 5. Frontend renders returned readings in the chart component.
@@ -251,9 +254,9 @@ Avoid:
 
 | Constraint | Explanation | Impact |
 | --- | --- | --- |
-| Hardware-dependent backend startup | Backend settings and sensor drivers expect Raspberry Pi device paths and configuration. | Full runtime validation usually requires target hardware. |
+| Hardware-dependent backend validation | Full hardware validation still requires Raspberry Pi device paths and GPIO access. | Use `SENSOR_MODE=mock`, `degraded`, or `disabled` only when hardware-free startup is intended. |
 | SQLite local storage | Data is stored in a local file under the configured `DB_PATH`. | Deployment is simple, but multi-instance scaling is not supported. |
-| In-memory buffer | Recent readings are buffered before periodic flush. | Readings can be lost if the process exits before a flush. |
+| In-memory buffer | Recent readings are buffered before count-based or periodic flush. | Readings can be lost if the process exits before a flush. |
 | No auth | API endpoints currently have no authentication. | Keep the service on a trusted network unless auth is added. |
 | Permissive CORS | Backend currently allows all origins. | Restrict before exposing beyond local development/trusted network. |
 | Backend-only CI image workflow | Current GitHub workflow publishes only the backend image. | Frontend deployment is not automated. |
@@ -262,7 +265,5 @@ Avoid:
 
 | Question | Context | Status |
 | --- | --- | --- |
-| Should sensor drivers support mock mode? | Local backend development is difficult without hardware. | open |
-| Should `FLUSH_EVERY_READINGS` trigger count-based flushes? | Setting exists but current flusher is time-based. | open |
 | Should frontend deployment be automated? | Current CI/CD only publishes backend image. | open |
 | Should API authentication be added? | Current API is suitable only for trusted local networks. | open |

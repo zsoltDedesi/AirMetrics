@@ -123,6 +123,8 @@ Status codes:
 Notes:
 
 - Readiness can be degraded even when liveness is healthy.
+- In `SENSOR_MODE=disabled`, sensor readiness values are `false` because no sensor drivers are started.
+- In `SENSOR_MODE=degraded`, unavailable sensors report `false` while available sensors can still report `true`.
 
 ### GET /api/sensors/{sensor_name}/latest
 

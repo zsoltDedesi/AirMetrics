@@ -11,7 +11,8 @@ Keep this file concise. Remove outdated details when they no longer matter.
 ## Current State
 
 - Backend is a FastAPI service for Raspberry Pi sensor collection.
-- Backend reads DS18B20 and AM2302/DHT22 sensors, buffers significant readings, persists to SQLite, and exposes REST plus SSE APIs under `/api`.
+- Backend reads DS18B20 and AM2302/DHT22 sensors when `SENSOR_MODE` enables them, buffers significant validated readings, persists to SQLite, and exposes REST plus SSE APIs under `/api`.
+- Backend sensor modes are `hardware`, `degraded`, `mock`, and `disabled`; `hardware` remains the default fail-fast mode.
 - Frontend is a Vue 3 + Vite dashboard using Naive UI, Axios, Apache ECharts, and `vue-echarts`.
 - Backend Docker deployment targets Raspberry Pi ARM64 and publishes to GHCR through GitHub Actions.
 - Automated test suite is not configured yet.
@@ -30,6 +31,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-30 | Replaced Chart.js history charts with Apache ECharts via `vue-echarts` and constrained chart rendering inside dashboard cards. | `Frontend/src/components/LineChartWrapper.vue`, `Frontend/package.json`, `docs/` |
 | 2026-05-30 | Added frontend-only temperature chart outlier hiding for values outside `-40°C` to `85°C`, with a visible hidden-count badge. | `Frontend/src/components/LineChartWrapper.vue`, `docs/DESIGN.md` |
 | 2026-05-30 | Opted backend image GitHub Actions workflow into Node.js 24 JavaScript action runtime. | `.github/workflows/backend-image.yml`, `docs/workflows.md` |
+| 2026-05-31 | Added backend sensor runtime modes, mock sensors, physical-range reading validation, AM2302 failure tracking, and count-based buffer flushing. | `Backend/app/`, `Backend/airmetrics.env.example`, `docs/` |
 
 ## Validation Already Run
 
@@ -42,28 +44,29 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-30 | Headless Chrome screenshots of Vite dashboard at 1280x900 and 390x1100. | passed; layout rendered without visible overlap |
 | 2026-05-30 | `npm run build` after ECharts migration and headless Chrome dashboard screenshot at 1240x1050. | passed; Vite reported a large chunk warning from chart dependencies |
 | 2026-05-30 | `npm run build` after chart outlier hiding and headless Chrome dashboard screenshot at 1240x1050. | passed; normal temperature range rendered without the `430°C` spike compressing the chart |
+| 2026-05-31 | `python3 -m compileall app` from `Backend/` after backend sensor-mode changes. | passed |
+| 2026-05-31 | Direct `validate_sensor_data` check for valid DS18B20/AM2302 values and invalid spike/humidity values. | passed |
 
 ## Known Issues
 
 | Issue | Impact | Suggested Next Step |
 | --- | --- | --- |
 | No automated tests | Regression risk for backend and frontend changes. | Add targeted backend unit tests first. |
-| Hardware-dependent backend startup | Local validation is limited away from Raspberry Pi. | Add mock sensor mode or test doubles. |
 | API has no authentication | Unsafe for public exposure. | Keep on trusted network or add auth before exposure. |
 | CORS is permissive | Broad browser access if network-exposed. | Restrict origins before production-style deployment. |
-| `FLUSH_EVERY_READINGS` not implemented by flusher | Config suggests count-based flushing that does not currently happen. | Implement or remove/document the setting. |
+| AM2302 in-range measurement noise | Physical-range validation rejects impossible spikes, but valid-range jumps can still clutter charts and history. | Choose a backend filtering policy before smoothing data. |
 | Last cleanup time is not exposed by API | Frontend cannot display a real cleanup timestamp. | Add a backend status/config endpoint if this metric is needed. |
 | ECharts increases frontend bundle size | Vite warns that the main production chunk exceeds 500 kB. | Consider route/component-level dynamic import or Rollup manual chunks if bundle size matters. |
 
 ## Current Assumptions
 
-- Deployment target is a Raspberry Pi with Docker and sensor hardware attached.
+- Deployment target is a Raspberry Pi with Docker; sensor hardware is expected in `hardware` mode and optional by mode otherwise.
 - SQLite database is local to the host and mounted into the container.
 - Frontend `VITE_API_BASE_BACKEND_URL` includes the `/api` prefix unless a proxy rewrites paths.
 - All current backend routes are under `/api`.
 
 ## Next Recommended Steps
 
-1. Add backend unit tests for `parse_since` and `Sampler._should_emit`.
-2. Add sensor mock mode for hardware-free backend development.
+1. Add backend unit tests for `parse_since`, `Sampler._should_emit`, reading validation, and sensor-mode startup helpers.
+2. Decide and implement AM2302 noise filtering.
 3. Add backend-exposed operational status for cleanup timing and threshold values if the dashboard should show those as live metrics.

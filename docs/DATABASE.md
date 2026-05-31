@@ -96,7 +96,7 @@ Rules:
 ```text
 Sampler emits Reading
   -> in-memory deque buffer
-  -> flusher task wakes every FLUSH_EVERY_SECONDS
+  -> count-based flush runs at FLUSH_EVERY_READINGS or flusher wakes every FLUSH_EVERY_SECONDS
   -> Database.insert_many writes batch to SQLite
 ```
 
@@ -113,6 +113,8 @@ retention task wakes every RETENTION_INTERVAL_SECONDS
 - Settings validation fails startup if `DB_PATH` is missing, not absolute, or its parent is not writable.
 - Database connection failures happen during startup and prevent the backend from becoming ready.
 - Flusher errors are printed and the background loop continues.
+- Buffered readings are removed from memory only after the database insert succeeds.
 - Retention errors are printed and the background loop continues.
 - `/api/health/ready` reports database readiness through `db`.
 - If the process stops before the next flush, buffered readings may be lost.
+- If the buffer reaches `BUFFER_MAX_READINGS`, the oldest buffered readings can be dropped by the bounded deque before persistence.

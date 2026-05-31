@@ -102,7 +102,10 @@ Tasks:
 - [ ] Add database tests with temporary SQLite file.
 - [ ] Add API tests with mocked app state.
 - [ ] Add frontend build/test workflow.
-- [ ] Add sensor mock mode for local development.
+- [x] Add sensor mock mode for local development.
+- [x] Add explicit sensor runtime modes for hardware, degraded, mock, and disabled startup.
+- [x] Add backend-side physical-range validation for emitted readings.
+- [x] Use `FLUSH_EVERY_READINGS` for count-based database flushing.
 - [ ] Restrict CORS before non-local exposure.
 - [ ] Decide whether authentication is required.
 
@@ -115,13 +118,14 @@ Tasks:
 | 2026-05-30 | Figma-derived frontend dashboard added | Dashboard now has metric cards, status strip, range controls, temperature and humidity history charts. |
 | 2026-05-30 | Material-style frontend token layer added | Colors, typography, shapes, dashboard CSS, and chart colors now use Material-style tokens where practical. |
 | 2026-05-30 | History charts migrated to Apache ECharts | `vue-echarts` now renders temperature and humidity history within fixed chart surfaces. |
+| 2026-05-31 | Sensor runtime modes and backend reading validation added | Backend can run in `hardware`, `degraded`, `mock`, or `disabled` mode; impossible readings are rejected before buffering. |
 
 ## Current Follow-Ups
 
 | Item | Reason | Priority |
 | --- | --- | --- |
 | Add automated backend tests | Core parsing and sampler logic can be tested without hardware. | high |
-| Add sensor mock mode | Full backend startup is difficult away from Raspberry Pi hardware. | high |
+| Decide AM2302 noise filtering policy | Physical-range validation does not remove in-range measurement jumps. | high |
 | Decide auth/network exposure policy | API currently has no authentication and permissive CORS. | medium |
 
 ## Known Gaps
@@ -130,6 +134,5 @@ Tasks:
 | --- | --- | --- |
 | No automated test suite | Regression risk grows with changes. | Start with backend unit tests for pure logic. |
 | No migration tooling | Schema changes are risky after deployment. | Add migration strategy before incompatible DB changes. |
-| `FLUSH_EVERY_READINGS` unused | Settings contract and behavior are partially misaligned. | Implement count-based flush or remove/document setting. |
-| Hardware-coupled startup | Local development is harder. | Add explicit mock sensor mode. |
+| AM2302 in-range measurement noise | Valid but jumpy values can still clutter charts and storage. | Choose a backend filtering strategy for AM2302. |
 | Frontend deployment not automated | Dashboard release process is manual or undefined. | Define desired frontend hosting/deployment model. |

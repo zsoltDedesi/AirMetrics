@@ -3,8 +3,9 @@
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,18 +14,21 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables or .env file, with validation.
     Critical settings are validated at startup, and any issues will cause the application to exit with an error message.
     """
-    
+
     # --- Sensor settings ---
-    DS18B20_DEVICE_ID: str = Field(
-        ...,
+    SENSOR_MODE: Literal["hardware", "degraded", "mock", "disabled"] = Field(
+        "hardware",
+        description="Sensor runtime mode: hardware, degraded, mock, or disabled.",
+    )
+    DS18B20_DEVICE_ID: str | None = Field(
+        None,
         description="Linux 1-wire device identifier for the DS18B20 temperature sensor (for example: 28-xxxxxxxxxxxx).",
-        min_length=1,
     )
     DS18B20_SAMPLING_INTERVAL_SECONDS: float = Field(
         2.0,
         description="Polling interval in seconds for DS18B20 reads.",
     )
-    
+
     AM2302_CALIBRATION_OFFSET: float = Field(
         1.0,
         description="Calibration offset applied to AM2302 temperature measurements.",
@@ -80,26 +84,66 @@ class Settings(BaseSettings):
     )
 
     # --- Pydantic configuration ---
-    model_config = SettingsConfigDict(       
-        env_file=os.path.join(os.path.dirname(__file__), '../../airmetrics.env'),
-        env_file_encoding='utf-8',
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(__file__), "../../airmetrics.env"),
+        env_file_encoding="utf-8",
         env_file_required=True,
-        env_ignore_empty =True,
+        env_ignore_empty=True,
         str_strip_whitespace=True,
-        extra='ignore',
+        extra="ignore",
     )
 
-    @field_validator('DB_PATH')
+    @model_validator(mode="after")
+    def check_sensor_contract(self) -> "Settings":
+        if self.SENSOR_MODE == "hardware" and not self.DS18B20_DEVICE_ID:
+            raise ValueError("DS18B20_DEVICE_ID is required when SENSOR_MODE=hardware")
+
+        return self
+
+    @field_validator(
+        "DS18B20_SAMPLING_INTERVAL_SECONDS",
+        "AM2302_SAMPLING_INTERVAL_SECONDS",
+        "FLUSH_EVERY_SECONDS",
+        "RETENTION_INTERVAL_SECONDS",
+    )
+    @classmethod
+    def check_positive_interval(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("Interval values must be greater than zero")
+
+        return value
+
+    @field_validator(
+        "THRESHOLD_DELTA_T_HIGH",
+        "THRESHOLD_DELTA_T_LOW",
+        "THRESHOLD_DELTA_RH",
+    )
+    @classmethod
+    def check_non_negative_threshold(cls, value: float) -> float:
+        if value < 0:
+            raise ValueError("Threshold values must be non-negative")
+
+        return value
+
+    @field_validator("BUFFER_MAX_READINGS", "FLUSH_EVERY_READINGS", "RETENTION_HOURS")
+    @classmethod
+    def check_positive_int(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Integer settings must be greater than zero")
+
+        return value
+
+    @field_validator("DB_PATH")
     @classmethod
     def check_db_folder_exists(cls, db_path: str) -> str:
         db_folder = Path(db_path).parent
-        
+
         if not db_folder.exists():
             raise ValueError(f"Database folder does not exist: {db_folder}")
-        
+
         if not db_folder.is_dir():
             raise ValueError(f"Database path is not a directory: {db_folder}")
-        
+
         if not db_folder.is_absolute():
             raise ValueError(f"Database path must be absolute: {db_path}")
 
@@ -118,8 +162,8 @@ except ValidationError as e:
     print("Critical configuration error:")
     # print detailed validation errors
     for error in e.errors():
-        loc = error['loc'][0]
-        msg = error['msg']
+        loc = error["loc"][0]
+        msg = error["msg"]
         print(f"   - {loc}: {msg}")
     sys.exit(1)
 

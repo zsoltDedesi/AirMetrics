@@ -18,8 +18,12 @@ Rules:
 
 - `ds18b20` provides temperature readings from Linux 1-Wire sysfs.
 - `am2302` provides temperature and relative humidity readings through GPIO.
-- Sensors are initialized during backend startup.
+- Sensors are initialized during backend startup according to `SENSOR_MODE`.
 - Sensor readiness is hardware-sensitive and can be false while the HTTP service is alive.
+- `hardware` mode requires expected sensors to initialize successfully.
+- `degraded` mode starts with any sensors that can initialize.
+- `mock` mode uses generated readings for development or demo without hardware.
+- `disabled` mode starts without sensor drivers or sampler tasks.
 
 Example:
 
@@ -57,6 +61,7 @@ Rules:
 
 - Each sensor has its own sampling interval.
 - Blocking sensor reads run through `asyncio.to_thread`.
+- Raw readings are rejected before emission if they are non-finite or outside sensor-specific physical limits.
 - The first valid reading is emitted.
 - Later readings are emitted only when a configured temperature or humidity threshold is reached.
 
@@ -75,7 +80,8 @@ Meaning:
 Rules:
 
 - The buffer size is limited by `BUFFER_MAX_READINGS`.
-- The flusher task writes buffered readings to SQLite on `FLUSH_EVERY_SECONDS`.
+- Buffered readings are flushed to SQLite when `FLUSH_EVERY_READINGS` is reached or on `FLUSH_EVERY_SECONDS`.
+- Buffered readings are removed from memory only after a successful database insert.
 - Buffered readings can be lost if the process exits before a flush.
 
 Example:
@@ -124,6 +130,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Rule | Description | Source or Reason |
 | --- | --- | --- |
 | Emit first valid reading | A sampler emits its first valid reading immediately. | Dashboard needs an initial value. |
+| Reject impossible readings | Readings outside physical sensor limits are rejected before buffering. | Prevents obvious sensor spikes from polluting stored history. |
 | Emit significant changes only | Later readings require configured temperature or humidity delta. | Reduces storage and stream noise. |
 | Persist emitted readings | Emitted readings are buffered and flushed to SQLite. | History charts need persisted data. |
 | Retain recent history only | Old readings are deleted according to `RETENTION_HOURS`. | Keeps local SQLite storage bounded. |
@@ -142,6 +149,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 ## Centralized Computed Logic
 
 - Sensor threshold decisions belong in `Backend/app/services/sampler.py`.
+- Sensor physical-range validation belongs in `Backend/app/services/reading_validation.py`.
 - History `since` parsing belongs in `Backend/app/utils/utils.py`.
 - SQLite schema, inserts, retention deletes, and history queries belong in `Backend/app/db.py`.
 - Chart axis and tooltip formatting belongs in frontend chart components.
@@ -151,9 +159,9 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 
 | State | Meaning | Allowed Next States | Notes |
 | --- | --- | --- | --- |
-| service starting | FastAPI lifespan is initializing settings, DB, sensors, and tasks. | running, failed startup | Startup can fail on invalid config or missing hardware. |
+| service starting | FastAPI lifespan is initializing settings, DB, sensors, and tasks. | running, degraded, failed startup | Startup can fail on invalid config or missing hardware in `hardware` mode. |
 | running | Background samplers and API routes are active. | shutting down, degraded | Normal runtime state. |
-| degraded | Service responds, but DB or one sensor may be unhealthy. | running, shutting down | Reflected by readiness checks. |
+| degraded | Service responds, but DB or one sensor may be unhealthy or absent by mode. | running, shutting down | Reflected by readiness checks. |
 | shutting down | Tasks are cancelled and resources are closed. | stopped | Buffer is flushed when possible. |
 | stopped | Process is not serving requests. | service starting | Managed by local process or Docker. |
 
@@ -162,9 +170,12 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Field or Action | Rule | Error Handling |
 | --- | --- | --- |
 | `DB_PATH` | Must be absolute and parent directory must exist, be a directory, and be writable. | Settings validation fails at startup. |
-| `DS18B20_DEVICE_ID` | Must be a non-empty configured device ID. | Settings validation fails or sensor init raises not found. |
+| `SENSOR_MODE` | Must be `hardware`, `degraded`, `mock`, or `disabled`. | Settings validation fails at startup. |
+| `DS18B20_DEVICE_ID` | Must be configured in `hardware` mode. | Settings validation fails or sensor init raises not found. |
 | DS18B20 read | Device file must exist and report CRC `YES`. | Read returns no emitted reading when invalid. |
 | AM2302 read | Temperature and humidity must be non-null after retries. | Runtime errors are logged by sampler. |
+| DS18B20 emitted range | Temperature must be finite and between `-55 C` and `125 C`. | Reading is logged and rejected before buffering. |
+| AM2302 emitted range | Temperature must be finite and between `-40 C` and `80 C`; humidity must be finite and between `0%` and `100%`. | Reading is logged and rejected before buffering. |
 | `since` query | Must parse as supported absolute or relative timestamp. | `/api/history` returns HTTP 400. |
 | Unknown sensor latest request | Sensor name must exist in app state. | `/api/sensors/{sensor_name}/latest` returns HTTP 404. |
 
@@ -173,7 +184,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Event | Trigger | Result |
 | --- | --- | --- |
 | `ReadingEmitted` | Sampler receives first valid reading or threshold is exceeded. | Reading is buffered and published to SSE subscribers. |
-| `BufferFlushed` | Flusher interval runs and buffer has readings. | Readings are inserted into SQLite. |
+| `BufferFlushed` | Flusher interval runs or `FLUSH_EVERY_READINGS` is reached and buffer has readings. | Readings are inserted into SQLite. |
 | `RetentionCleanup` | Retention interval runs. | Old readings are deleted from SQLite. |
 | `SseSubscribed` | Client connects to `/api/stream`. | Latest known readings are sent before live events. |
 
@@ -190,6 +201,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Retention | Deletion of old persisted readings. |
 | Ready | Backend state where DB and sensor checks pass. |
 | Live | Backend HTTP process can respond. |
+| Sensor mode | Runtime policy deciding whether hardware, partial hardware, mock sensors, or no sensors are started. |
 
 ## Open Domain Questions
 
@@ -198,3 +210,4 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Should readings also be stored at fixed intervals even without significant change? | Current history shows changes, not a uniform time series. | open |
 | What humidity/temperature thresholds are correct for the deployment environment? | Thresholds control storage volume and chart granularity. | open |
 | Should degraded sensor state be displayed as a first-class frontend state? | Users may need clear visibility into partial hardware failures. | open |
+| Should noisy AM2302 readings be filtered before emission? | Physical-range validation removes impossible spikes, but in-range jumps can still add chart noise. | open |
