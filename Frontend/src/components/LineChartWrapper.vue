@@ -123,7 +123,8 @@ const chartOptions = computed(() => ({
     right: 12,
     bottom: 8,
     left: 8,
-    containLabel: true,
+    outerBoundsMode: 'same',
+    outerBoundsContain: 'axisLabel',
   },
   tooltip: {
     trigger: 'axis',
