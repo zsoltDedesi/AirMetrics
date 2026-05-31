@@ -37,6 +37,7 @@ Good candidates:
 - `parse_since`
 - `Sampler._should_emit`
 - `validate_sensor_data`
+- `MedianConfirmationFilter`
 - SSE formatting helpers
 - settings validation edge cases
 - sensor-mode startup helpers with mocked drivers

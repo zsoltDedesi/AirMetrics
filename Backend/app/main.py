@@ -13,6 +13,7 @@ from app.api.router import api_router
 from app.db import Database, Reading
 from app.sensors.mock import MockSensor
 from app.services.env_loader import settings
+from app.services.reading_filter import MedianConfirmationFilter
 from app.services.sampler import Sampler
 from app.services.tasks import flush_buffer, flusher, retention
 from app.stream import SseHub
@@ -55,6 +56,10 @@ def create_samplers(
                 threshold_humidity=settings.THRESHOLD_DELTA_RH,
                 interval_seconds=settings.AM2302_SAMPLING_INTERVAL_SECONDS,
                 on_change=on_reading_change,
+                reading_filter=MedianConfirmationFilter(
+                    window_size=5,
+                    confirmation_readings=2,
+                ),
             )
         )
 

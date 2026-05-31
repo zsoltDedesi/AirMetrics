@@ -279,9 +279,38 @@ Related files:
 
 ---
 
+## 2026-05-31 - Filter AM2302 noise with median confirmation
+
+Status: accepted
+
+Context:
+
+AM2302/DHT22 readings can jump within the physically valid temperature and humidity ranges. Physical-range validation catches impossible spikes, but valid-range jitter can still clutter SSE, SQLite history, and charts.
+
+Decision:
+
+Apply AM2302-only noise filtering before threshold emission. The filter uses a rolling median window of 5 readings and requires 2 consecutive median candidates in the same direction before a threshold-crossing change is emitted. DS18B20 readings keep the existing direct threshold behavior.
+
+Reasoning:
+
+A median window suppresses isolated spikes without adding dependencies or changing the database schema. The confirmation step prevents one-off valid-range jumps from being emitted immediately. Keeping the rule AM2302-specific avoids slowing the more stable DS18B20 temperature path.
+
+Consequences:
+
+AM2302 chart/history updates are smoother but can be delayed by a few sampling intervals when a real environmental change occurs. The first valid AM2302 reading is still emitted immediately so the dashboard does not stay empty during filter warm-up. Filter constants may need tuning after observing real Raspberry Pi data.
+
+Related files:
+
+- `Backend/app/services/reading_filter.py`
+- `Backend/app/services/sampler.py`
+- `Backend/app/main.py`
+- `docs/domain.md`
+
+---
+
 ## Known Gaps
 
 - No automated backend or frontend test suite is currently present.
 - No dedicated frontend CI workflow is present.
-- AM2302 in-range measurement noise is not filtered yet.
+- AM2302 filter constants are not field-tuned yet.
 - CORS is permissive and should be restricted before exposing the service outside a trusted network.

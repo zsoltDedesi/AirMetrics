@@ -104,6 +104,7 @@ Responsibilities:
 - Validate settings at startup.
 - Coordinate sensor drivers and sampler services.
 - Apply backend-side physical-range validation before readings are emitted.
+- Apply AM2302-specific median confirmation filtering before threshold emission.
 - Buffer emitted readings.
 - Coordinate SQLite persistence.
 - Publish live readings to SSE subscribers.
@@ -156,11 +157,12 @@ Schema change approach:
 1. Sensor driver reads physical sensor data.
 2. Sampler validates the reading against sensor-specific physical limits.
 3. Sampler creates a Reading model.
-4. Sampler checks temperature and humidity thresholds.
-5. Reading is appended to the in-memory buffer.
-6. Reading is published to SseHub.
-7. /api/stream sends the reading to subscribed frontend clients.
-8. Frontend updates displayed sensor values.
+4. AM2302 readings pass through median confirmation filtering.
+5. Sampler checks temperature and humidity thresholds.
+6. Reading is appended to the in-memory buffer.
+7. Reading is published to SseHub.
+8. /api/stream sends the reading to subscribed frontend clients.
+9. Frontend updates displayed sensor values.
 ```
 
 ### History Flow

@@ -62,6 +62,8 @@ Rules:
 - Each sensor has its own sampling interval.
 - Blocking sensor reads run through `asyncio.to_thread`.
 - Raw readings are rejected before emission if they are non-finite or outside sensor-specific physical limits.
+- AM2302 readings are smoothed with a 5-sample rolling median before emission decisions.
+- AM2302 threshold-crossing changes must be confirmed by 2 consecutive median candidates in the same direction.
 - The first valid reading is emitted.
 - Later readings are emitted only when a configured temperature or humidity threshold is reached.
 
@@ -131,6 +133,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | --- | --- | --- |
 | Emit first valid reading | A sampler emits its first valid reading immediately. | Dashboard needs an initial value. |
 | Reject impossible readings | Readings outside physical sensor limits are rejected before buffering. | Prevents obvious sensor spikes from polluting stored history. |
+| Smooth AM2302 noise | AM2302 uses 5-sample median smoothing and 2-reading confirmation before emitting changed values. | Reduces valid-range DHT22/AM2302 jitter without changing DS18B20 behavior. |
 | Emit significant changes only | Later readings require configured temperature or humidity delta. | Reduces storage and stream noise. |
 | Persist emitted readings | Emitted readings are buffered and flushed to SQLite. | History charts need persisted data. |
 | Retain recent history only | Old readings are deleted according to `RETENTION_HOURS`. | Keeps local SQLite storage bounded. |
@@ -150,6 +153,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 
 - Sensor threshold decisions belong in `Backend/app/services/sampler.py`.
 - Sensor physical-range validation belongs in `Backend/app/services/reading_validation.py`.
+- AM2302 noise filtering belongs in `Backend/app/services/reading_filter.py`.
 - History `since` parsing belongs in `Backend/app/utils/utils.py`.
 - SQLite schema, inserts, retention deletes, and history queries belong in `Backend/app/db.py`.
 - Chart axis and tooltip formatting belongs in frontend chart components.
@@ -183,7 +187,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 
 | Event | Trigger | Result |
 | --- | --- | --- |
-| `ReadingEmitted` | Sampler receives first valid reading or threshold is exceeded. | Reading is buffered and published to SSE subscribers. |
+| `ReadingEmitted` | Sampler receives first valid reading or a filtered threshold change is confirmed. | Reading is buffered and published to SSE subscribers. |
 | `BufferFlushed` | Flusher interval runs or `FLUSH_EVERY_READINGS` is reached and buffer has readings. | Readings are inserted into SQLite. |
 | `RetentionCleanup` | Retention interval runs. | Old readings are deleted from SQLite. |
 | `SseSubscribed` | Client connects to `/api/stream`. | Latest known readings are sent before live events. |
@@ -202,6 +206,7 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Ready | Backend state where DB and sensor checks pass. |
 | Live | Backend HTTP process can respond. |
 | Sensor mode | Runtime policy deciding whether hardware, partial hardware, mock sensors, or no sensors are started. |
+| Median confirmation | AM2302 filter rule requiring a rolling median change to repeat before emission. |
 
 ## Open Domain Questions
 
@@ -210,4 +215,4 @@ With RETENTION_HOURS=24, readings older than one day are deleted by the retentio
 | Should readings also be stored at fixed intervals even without significant change? | Current history shows changes, not a uniform time series. | open |
 | What humidity/temperature thresholds are correct for the deployment environment? | Thresholds control storage volume and chart granularity. | open |
 | Should degraded sensor state be displayed as a first-class frontend state? | Users may need clear visibility into partial hardware failures. | open |
-| Should noisy AM2302 readings be filtered before emission? | Physical-range validation removes impossible spikes, but in-range jumps can still add chart noise. | open |
+| Should AM2302 filter settings become configurable? | Current filter constants are intentionally simple but may need field tuning after hardware observation. | open |

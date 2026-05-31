@@ -17,6 +17,19 @@ class SensorDriver(Protocol):
     def read_sensor(self) -> dict | None: ...
 
 
+class ReadingFilter(Protocol):
+    """Optional sensor-specific processing before emission decisions."""
+
+    def process(
+        self,
+        reading: Reading,
+        *,
+        last_emitted: Reading | None,
+        threshold_temp: float,
+        threshold_humidity: float | None,
+    ) -> Reading | None: ...
+
+
 class Sampler:
     def __init__(
         self,
@@ -27,6 +40,7 @@ class Sampler:
         threshold_humidity: float | None = None,
         interval_seconds: float,
         on_change: ReadingHandler,
+        reading_filter: ReadingFilter | None = None,
     ):
         self.driver = driver
         self.sensor_name = sensor_name
@@ -34,6 +48,7 @@ class Sampler:
         self.threshold_humidity = threshold_humidity
         self.interval_seconds = interval_seconds
         self.on_change = on_change
+        self.reading_filter = reading_filter
 
         self._last: Reading | None = None
         self._stop = asyncio.Event()
@@ -62,6 +77,16 @@ class Sampler:
         except Exception as e:
             print(f"Unexpected error processing reading for {self.sensor_name}: {e}")
             return
+
+        if self.reading_filter is not None:
+            current = self.reading_filter.process(
+                current,
+                last_emitted=self._last,
+                threshold_temp=self.threshold_temp,
+                threshold_humidity=self.threshold_humidity,
+            )
+            if current is None:
+                return
 
         if not self._should_emit(current):
             return
