@@ -73,6 +73,12 @@ Rules:
 | Health state | Keep API calls in `Frontend/src/api/health.js` and live stream state in `useSensorStream.js`. |
 | Error handling | Use small inline messages for health, stream, and history failures; keep technical details in console logs. |
 
+Sensor card state:
+
+- `Online` requires both an active SSE connection and `true` sensor readiness from `/api/health/ready`.
+- `Waiting` means the sensor is ready but the live stream is not currently connected.
+- `Offline` means backend readiness does not currently report the sensor as ready, even if a cached latest reading is still displayed.
+
 ## Chart Display Rules
 
 - Temperature history charts hide values outside the display range `-40°C` to `85°C`.

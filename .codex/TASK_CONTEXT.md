@@ -36,6 +36,8 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | Exposed retention cleanup metadata through `/api/system/status` and wired the frontend Last cleanup tile to it. | `Backend/app/api/system.py`, `Backend/app/services/tasks.py`, `Frontend/src/views/HomeView.vue`, `docs/API_CONTRACT.md` |
 | 2026-05-31 | Added configurable AM2302 humidity calibration offset. | `Backend/app/sensors/am2302.py`, `Backend/app/services/env_loader.py`, `Backend/airmetrics.env.example`, `docs/` |
 | 2026-05-31 | Added frontend Docker image, compose file, Nginx proxy config, and GHCR workflow using `frontend-*` tags. | `Frontend/Dockerfile`, `Frontend/docker-compose.yml`, `.github/workflows/frontend-image.yml`, `docs/` |
+| 2026-06-01 | Changed frontend sensor metric badges to use backend sensor readiness instead of cached readings. | `Frontend/src/views/HomeView.vue`, `docs/DESIGN.md` |
+| 2026-06-07 | Changed frontend Docker default backend upstream to the local backend device address while keeping it overrideable by environment variable. | `Frontend/docker-compose.yml`, `docs/DEPLOYMENT.md` |
 
 ## Validation Already Run
 
@@ -57,6 +59,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | `python3 -m compileall app` after AM2302 humidity calibration changes. | passed |
 | 2026-05-31 | `npm run build` after frontend Docker image changes. | passed; Vite still reports the existing large chunk warning from ECharts dependencies |
 | 2026-05-31 | Local frontend Docker build. | not run; `docker` command is not installed in this environment |
+| 2026-06-01 | `npm run build` after sensor readiness badge fix. | passed; Vite still reports the existing large chunk warning from ECharts dependencies |
 
 ## Known Issues
 
@@ -67,6 +70,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | CORS is permissive | Broad browser access if network-exposed. | Restrict origins before production-style deployment. |
 | AM2302 filter constants are not field-tuned | Default 5-sample median and 2-reading confirmation may need adjustment after real sensor observation. | Validate against Raspberry Pi hardware data. |
 | AM2302 humidity calibration is not field-validated | DHT22-class humidity readings can differ from a nearby reference sensor. | Compare after sensors stabilize side by side and set `AM2302_HUMIDITY_CALIBRATION_OFFSET`. |
+| AM2302 unplug detection is delayed | Backend readiness currently depends on last successful read age and consecutive failures, so unplugging may take about a minute to surface. | Add an active health probe or shorter stale timeout if faster offline detection is needed. |
 | ECharts increases frontend bundle size | Vite warns that the main production chunk exceeds 500 kB. | Consider route/component-level dynamic import or Rollup manual chunks if bundle size matters. |
 
 ## Current Assumptions
@@ -74,7 +78,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 - Deployment target is a Raspberry Pi with Docker; sensor hardware is expected in `hardware` mode and optional by mode otherwise.
 - SQLite database is local to the host and mounted into the container.
 - Frontend `VITE_API_BASE_BACKEND_URL` includes the `/api` prefix unless a proxy rewrites paths.
-- Frontend Docker image is built with `VITE_API_BASE_BACKEND_URL=/api`; Nginx proxies `/api` to `BACKEND_UPSTREAM`.
+- Frontend Docker image is built with `VITE_API_BASE_BACKEND_URL=/api`; Nginx proxies `/api` to `BACKEND_UPSTREAM`, which defaults to `http://192.168.1.155:8000` in the frontend compose file.
 - All current backend routes are under `/api`.
 
 ## Next Recommended Steps

@@ -102,7 +102,7 @@ Frontend container variables:
 
 | Name | Required | Runtime | Description |
 | --- | ---: | --- | --- |
-| `BACKEND_UPSTREAM` | no | frontend | Backend origin proxied by Nginx for `/api`; defaults to `http://host.docker.internal:8000` in `Frontend/docker-compose.yml`. Do not include a trailing slash. |
+| `BACKEND_UPSTREAM` | no | frontend | Backend origin proxied by Nginx for `/api`; defaults to `http://192.168.1.155:8000` in `Frontend/docker-compose.yml`. Do not include a trailing slash. |
 
 ## Deployment Steps
 

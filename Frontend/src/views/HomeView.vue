@@ -210,6 +210,8 @@ const {
 
 const ds18b20Reading = computed(() => readings.value.ds18b20)
 const am2302Reading = computed(() => readings.value.am2302)
+const ds18b20Ready = computed(() => readiness.value?.ds18b20 === true)
+const am2302Ready = computed(() => readiness.value?.am2302 === true)
 
 const historyRangeLabel = computed(() => historyRanges.find((range) => range.value === historyRange.value)?.label ?? historyRange.value)
 const streamStatusText = computed(() => (isConnected.value ? 'Connected' : 'Disconnected'))
@@ -234,6 +236,7 @@ const metricCards = computed(() => [
     key: 'ds18b20-temperature',
     title: 'DS18B20 Temperature',
     sensorLabel: 'ds18b20',
+    sensorReady: ds18b20Ready.value,
     reading: ds18b20Reading.value,
     value: ds18b20Reading.value?.temperature,
     unit: '°C',
@@ -244,6 +247,7 @@ const metricCards = computed(() => [
     key: 'am2302-temperature',
     title: 'AM2302 Temperature',
     sensorLabel: 'am2302_temp',
+    sensorReady: am2302Ready.value,
     reading: am2302Reading.value,
     value: am2302Reading.value?.temperature,
     unit: '°C',
@@ -254,6 +258,7 @@ const metricCards = computed(() => [
     key: 'am2302-humidity',
     title: 'AM2302 Humidity',
     sensorLabel: 'am2302_hum',
+    sensorReady: am2302Ready.value,
     reading: am2302Reading.value,
     value: am2302Reading.value?.humidity,
     unit: '%',
@@ -301,9 +306,9 @@ const statusItems = computed(() => [
   },
 ])
 
-function createMetricCard({ key, title, sensorLabel, reading, value, unit, icon, tone }) {
+function createMetricCard({ key, title, sensorLabel, sensorReady, reading, value, unit, icon, tone }) {
   const hasValue = value != null
-  const online = Boolean(reading && isConnected.value)
+  const online = Boolean(sensorReady && isConnected.value)
 
   return {
     key,
@@ -315,8 +320,8 @@ function createMetricCard({ key, title, sensorLabel, reading, value, unit, icon,
     icon,
     tone,
     updatedAt: reading?.ts ? formatTimeWithSeconds(reading.ts) : '--:--:--',
-    badge: online ? 'Online' : reading ? 'Waiting' : 'Offline',
-    badgeClass: online ? 'state-online' : reading ? 'state-waiting' : 'state-offline',
+    badge: online ? 'Online' : sensorReady ? 'Waiting' : 'Offline',
+    badgeClass: online ? 'state-online' : sensorReady ? 'state-waiting' : 'state-offline',
   }
 }
 
@@ -411,6 +416,7 @@ onMounted(async () => {
   connect()
   statusTimerId = window.setInterval(() => {
     nowTs.value = Math.floor(Date.now() / 1000)
+    checkReadiness()
     refreshSystemStatus()
   }, 60_000)
 })
