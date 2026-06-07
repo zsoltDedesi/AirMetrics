@@ -145,7 +145,7 @@ Backend build settings:
 - Dockerfile: `./Backend/Dockerfile`
 - Platform: `linux/arm64`
 - Push: enabled
-- JavaScript GitHub Actions runtime: opt in to Node.js 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`.
+- JavaScript GitHub Actions runtime: uses action major versions that declare Node.js 24.
 
 Frontend build settings:
 
@@ -154,7 +154,7 @@ Frontend build settings:
 - Platform: `linux/arm64`
 - Push: enabled
 - Build argument: `VITE_API_BASE_BACKEND_URL=/api`
-- JavaScript GitHub Actions runtime: opt in to Node.js 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`.
+- JavaScript GitHub Actions runtime: uses action major versions that declare Node.js 24.
 
 Backend release process:
 
