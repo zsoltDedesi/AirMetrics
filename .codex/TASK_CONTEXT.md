@@ -14,7 +14,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 - Backend reads DS18B20 and AM2302/DHT22 sensors when `SENSOR_MODE` enables them, filters AM2302 noise, buffers significant validated readings, persists to SQLite, and exposes REST plus SSE APIs under `/api`.
 - Backend sensor modes are `hardware`, `degraded`, `mock`, and `disabled`; `hardware` remains the default fail-fast mode.
 - Frontend is a Vue 3 + Vite dashboard using Naive UI, Axios, Apache ECharts, and `vue-echarts`.
-- Backend and frontend Docker deployments target Raspberry Pi ARM64 and publish separate GHCR images through GitHub Actions.
+- Backend Docker deployment targets Raspberry Pi ARM64; frontend Docker deployment targets AMD64, and both publish separate GHCR images through GitHub Actions.
 - Automated test suite is not configured yet.
 - API authentication is not implemented; current assumption is trusted local network usage.
 
@@ -40,6 +40,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-06-07 | Changed frontend Docker default backend upstream to the local backend device address while keeping it overrideable by environment variable. | `Frontend/docker-compose.yml`, `docs/DEPLOYMENT.md` |
 | 2026-06-07 | Corrected frontend GHCR package name to `airmetrics-frontend` to match the compose deployment image. | `.github/workflows/frontend-image.yml`, `docs/` |
 | 2026-06-07 | Updated backend and frontend image workflows to Node.js 24 action major versions and removed the forced runtime override. | `.github/workflows/`, `docs/workflows.md` |
+| 2026-06-07 | Changed frontend GHCR image build platform to `linux/amd64`; backend image remains `linux/arm64`. | `.github/workflows/frontend-image.yml`, `docs/` |
 
 ## Validation Already Run
 

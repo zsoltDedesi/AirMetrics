@@ -43,11 +43,12 @@ GitHub Actions builds and pushes:
 - backend workflow: `latest`, `backend-v*.*.*`, and `manual-<short-sha>`
 - frontend workflow: `frontend-latest`, `frontend-v*.*.*`, and `frontend-manual-<short-sha>`
 
-Target platform:
+Target platforms:
 
-```text
-linux/arm64
-```
+| Image | Platform |
+| --- | --- |
+| Backend | `linux/arm64` |
+| Frontend | `linux/amd64` |
 
 ## Runtime Mounts and Devices
 

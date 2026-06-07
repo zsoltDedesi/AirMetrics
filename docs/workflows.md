@@ -151,7 +151,7 @@ Frontend build settings:
 
 - Context: `./Frontend`
 - Dockerfile: `./Frontend/Dockerfile`
-- Platform: `linux/arm64`
+- Platform: `linux/amd64`
 - Push: enabled
 - Build argument: `VITE_API_BASE_BACKEND_URL=/api`
 - JavaScript GitHub Actions runtime: uses action major versions that declare Node.js 24.
