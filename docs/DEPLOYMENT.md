@@ -35,7 +35,7 @@ ghcr.io/zsoltdedesi/airmetrics-backend:latest
 Frontend image:
 
 ```text
-ghcr.io/zsoltdedesi/frontend-airmetrics:frontend-latest
+ghcr.io/zsoltdedesi/airmetrics-frontend:frontend-latest
 ```
 
 GitHub Actions builds and pushes:

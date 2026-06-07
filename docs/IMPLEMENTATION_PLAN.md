@@ -123,7 +123,7 @@ Tasks:
 | 2026-05-31 | Sensor runtime modes and backend reading validation added | Backend can run in `hardware`, `degraded`, `mock`, or `disabled` mode; impossible readings are rejected before buffering. |
 | 2026-05-31 | AM2302 noise filtering added | AM2302 emissions use 5-sample median smoothing plus 2-reading confirmation. |
 | 2026-05-31 | Cleanup status exposed to dashboard | `/api/system/status` reports retention metadata and the frontend Last cleanup tile uses it. |
-| 2026-05-31 | Frontend Docker image workflow added | Frontend builds into an Nginx image published as `frontend-airmetrics` with `frontend-*` tags. |
+| 2026-05-31 | Frontend Docker image workflow added | Frontend builds into an Nginx image published as `airmetrics-frontend` with `frontend-*` tags. |
 
 ## Current Follow-Ups
 

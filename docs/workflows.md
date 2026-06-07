@@ -124,7 +124,7 @@ ghcr.io/<repository-owner>/airmetrics-backend
 Frontend image:
 
 ```text
-ghcr.io/<repository-owner>/frontend-airmetrics
+ghcr.io/<repository-owner>/airmetrics-frontend
 ```
 
 Backend tags:

@@ -9,7 +9,7 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/frontend-airmetrics
+  IMAGE_NAME: ${{ github.repository_owner }}/airmetrics-frontend
   VITE_API_BASE_BACKEND_URL: /api
 
 jobs:

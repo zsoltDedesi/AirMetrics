@@ -38,6 +38,7 @@ Keep this file concise. Remove outdated details when they no longer matter.
 | 2026-05-31 | Added frontend Docker image, compose file, Nginx proxy config, and GHCR workflow using `frontend-*` tags. | `Frontend/Dockerfile`, `Frontend/docker-compose.yml`, `.github/workflows/frontend-image.yml`, `docs/` |
 | 2026-06-01 | Changed frontend sensor metric badges to use backend sensor readiness instead of cached readings. | `Frontend/src/views/HomeView.vue`, `docs/DESIGN.md` |
 | 2026-06-07 | Changed frontend Docker default backend upstream to the local backend device address while keeping it overrideable by environment variable. | `Frontend/docker-compose.yml`, `docs/DEPLOYMENT.md` |
+| 2026-06-07 | Corrected frontend GHCR package name to `airmetrics-frontend` to match the compose deployment image. | `.github/workflows/frontend-image.yml`, `docs/` |
 
 ## Validation Already Run
 
