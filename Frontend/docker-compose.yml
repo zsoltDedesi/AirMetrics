@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ghcr.io/zsoltdedesi/frontend-airmetrics:frontend-latest
+    image: ghcr.io/zsoltdedesi/airmetrics-frontend:frontend-latest
     pull_policy: always
     container_name: Airmetrics
     restart: unless-stopped
